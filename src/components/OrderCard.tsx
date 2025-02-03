@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { KaspiOrder } from "../types/orders";
-import { formatDate, formatPrice } from "../utils/format";
+import { formatDate } from "../utils/format";
 
 interface OrderCardProps {
   order: KaspiOrder;
