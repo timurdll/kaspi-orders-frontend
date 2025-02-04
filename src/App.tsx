@@ -23,6 +23,8 @@ function App() {
     skip: !isAuthenticated,
   });
 
+  console.log(currentOrders);
+
   const {
     data: archiveOrders,
     error: archiveError,

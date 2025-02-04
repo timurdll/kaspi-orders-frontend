@@ -10,13 +10,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
   const { attributes, products } = order;
   const orderId = attributes.code; // Используем ID заказа как ключ
 
-  console.log(order);
-
-  // Функция определения исходного цвета
   const getInitialColor = () => {
-    return attributes.kaspiDelivery?.express
+    return !attributes.isKaspiDelivery
+      ? "bg-blue-300"
+      : attributes.kaspiDelivery?.express
       ? "bg-red-300"
-      : attributes.assembled || attributes.status === "COMPLETED"
+      : attributes.assembled
       ? "bg-yellow-300"
       : "bg-white";
   };
@@ -64,7 +63,11 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
         <div>
           <h4 className="font-medium mb-2">Доставка</h4>
           <p className="text-sm">
-            {attributes.isKaspiDelivery ? "Kaspi доставка" : "Своя доставка"}
+            {attributes.isKaspiDelivery && attributes.kaspiDelivery.express
+              ? "Express доставка"
+              : attributes.isKaspiDelivery
+              ? "Kaspi доставка"
+              : "Своя доставка"}
           </p>
           <p className="text-sm text-gray-600">
             {formatDate(attributes.plannedDeliveryDate)}
