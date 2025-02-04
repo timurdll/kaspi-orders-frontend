@@ -98,6 +98,7 @@ export interface KaspiOrder {
 }
 
 export interface Store {
+  id: string;
   storeName: string;
   orders?: KaspiOrder[];
   error?: string;

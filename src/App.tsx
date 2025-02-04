@@ -3,12 +3,14 @@ import { useGetOrdersQuery, useGetArchiveOrdersQuery } from "./redux/api";
 import { TotalStats } from "./components/TotalStats";
 import { StoreOrders } from "./components/StoreOrders";
 import { LoginPage } from "./components/LoginPage";
+import { AddStoreModal } from "./components/AddStoreModal";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "./redux/store";
 import { logout } from "./redux/authSlice";
 
 function App() {
   const [tab, setTab] = useState<"current" | "archive">("current");
+  const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState(false);
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated
   );
@@ -22,8 +24,6 @@ function App() {
     pollingInterval: 60000,
     skip: !isAuthenticated,
   });
-
-  console.log(currentOrders);
 
   const {
     data: archiveOrders,
@@ -73,12 +73,20 @@ function App() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Заказы Kaspi</h1>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-        >
-          Выйти
-        </button>
+        <div className="flex space-x-4">
+          <button
+            onClick={() => setIsAddStoreModalOpen(true)}
+            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+          >
+            Добавить магазин
+          </button>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+          >
+            Выйти
+          </button>
+        </div>
       </div>
 
       <div className="flex space-x-4 mb-6">
@@ -111,6 +119,11 @@ function App() {
           <StoreOrders key={store.storeName} store={store} />
         ))}
       </div>
+
+      <AddStoreModal
+        isOpen={isAddStoreModalOpen}
+        onClose={() => setIsAddStoreModalOpen(false)}
+      />
     </div>
   );
 }
