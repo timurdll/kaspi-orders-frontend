@@ -12,7 +12,7 @@ interface Store {
 
 interface CreateStoreDto {
   name: string;
-  kaspiToken: string;
+  apiKey: string;
 }
 
 export const api = createApi({

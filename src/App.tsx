@@ -7,6 +7,7 @@ import { AddStoreModal } from "./components/AddStoreModal";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "./redux/store";
 import { logout } from "./redux/authSlice";
+import { CopyNotificationProvider } from "./components/GlobalCopyNotification";
 
 function App() {
   const [tab, setTab] = useState<"current" | "archive">("current");
@@ -70,61 +71,63 @@ function App() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Заказы Kaspi</h1>
-        <div className="flex space-x-4">
+    <CopyNotificationProvider>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Заказы Kaspi</h1>
+          <div className="flex space-x-4">
+            <button
+              onClick={() => setIsAddStoreModalOpen(true)}
+              className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+            >
+              Добавить магазин
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+            >
+              Выйти
+            </button>
+          </div>
+        </div>
+
+        <div className="flex space-x-4 mb-6">
           <button
-            onClick={() => setIsAddStoreModalOpen(true)}
-            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+            className={`px-4 py-2 rounded-md ${
+              tab === "current" ? "bg-blue-500 text-white" : "bg-gray-200"
+            }`}
+            onClick={() => setTab("current")}
           >
-            Добавить магазин
+            Текущие заказы
           </button>
           <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+            className={`px-4 py-2 rounded-md ${
+              tab === "archive" ? "bg-blue-500 text-white" : "bg-gray-200"
+            }`}
+            onClick={() => setTab("archive")}
           >
-            Выйти
+            Архивные заказы
           </button>
         </div>
+
+        <TotalStats
+          totalOrders={data.totalStats.totalOrders}
+          totalRevenue={data.totalStats.totalRevenue}
+          ordersByStatus={data.totalStats.ordersByStatus}
+        />
+
+        <div className="space-y-6">
+          {data.stores.map((store) => (
+            <StoreOrders key={store.storeName} store={store} />
+          ))}
+        </div>
+
+        <AddStoreModal
+          isOpen={isAddStoreModalOpen}
+          onClose={() => setIsAddStoreModalOpen(false)}
+        />
       </div>
-
-      <div className="flex space-x-4 mb-6">
-        <button
-          className={`px-4 py-2 rounded-md ${
-            tab === "current" ? "bg-blue-500 text-white" : "bg-gray-200"
-          }`}
-          onClick={() => setTab("current")}
-        >
-          Текущие заказы
-        </button>
-        <button
-          className={`px-4 py-2 rounded-md ${
-            tab === "archive" ? "bg-blue-500 text-white" : "bg-gray-200"
-          }`}
-          onClick={() => setTab("archive")}
-        >
-          Архивные заказы
-        </button>
-      </div>
-
-      <TotalStats
-        totalOrders={data.totalStats.totalOrders}
-        totalRevenue={data.totalStats.totalRevenue}
-        ordersByStatus={data.totalStats.ordersByStatus}
-      />
-
-      <div className="space-y-6">
-        {data.stores.map((store) => (
-          <StoreOrders key={store.storeName} store={store} />
-        ))}
-      </div>
-
-      <AddStoreModal
-        isOpen={isAddStoreModalOpen}
-        onClose={() => setIsAddStoreModalOpen(false)}
-      />
-    </div>
+    </CopyNotificationProvider>
   );
 }
 

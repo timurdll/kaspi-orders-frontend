@@ -12,6 +12,7 @@ interface StoreOrdersProps {
 export const StoreOrders: React.FC<StoreOrdersProps> = ({ store }) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteStore, { isLoading: isDeleting }] = useDeleteStoreMutation();
+  console.log(store);
 
   const handleDeleteClick = () => {
     setIsDeleteModalOpen(true);
@@ -64,7 +65,7 @@ export const StoreOrders: React.FC<StoreOrdersProps> = ({ store }) => {
           </button>
         </div>
       </div>
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {store.orders?.map((order) => (
           <OrderCard key={order.id} order={order} />
         ))}

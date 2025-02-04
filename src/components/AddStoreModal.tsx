@@ -9,15 +9,15 @@ interface AddStoreModalProps {
 
 export function AddStoreModal({ isOpen, onClose }: AddStoreModalProps) {
   const [name, setName] = useState("");
-  const [kaspiToken, setKaspiToken] = useState("");
+  const [apiKey, setApiKey] = useState("");
   const [addStore, { isLoading }] = useAddStoreMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await addStore({ name, kaspiToken }).unwrap();
+      await addStore({ name, apiKey }).unwrap();
       setName("");
-      setKaspiToken("");
+      setApiKey("");
       onClose();
     } catch (error) {
       console.error("Failed to add store:", error);
@@ -51,8 +51,8 @@ export function AddStoreModal({ isOpen, onClose }: AddStoreModalProps) {
               </label>
               <input
                 type="text"
-                value={kaspiToken}
-                onChange={(e) => setKaspiToken(e.target.value)}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
                 className="w-full rounded-md border border-gray-300 px-3 py-2"
                 required
               />
