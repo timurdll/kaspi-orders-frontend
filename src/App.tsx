@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { useGetOrdersQuery, useGetArchiveOrdersQuery } from "./redux/api";
+import {
+  useGetOrdersQuery,
+  useGetArchiveOrdersQuery,
+  useGetPreOrdersQuery,
+} from "./redux/api";
 import { TotalStats } from "./components/TotalStats";
 import { StoreOrders } from "./components/StoreOrders";
 import { LoginPage } from "./components/LoginPage";
@@ -9,8 +13,10 @@ import { RootState } from "./redux/store";
 import { logout } from "./redux/authSlice";
 import { CopyNotificationProvider } from "./components/GlobalCopyNotification";
 
+type TabType = "current" | "archive" | "pre-orders";
+
 function App() {
-  const [tab, setTab] = useState<"current" | "archive">("current");
+  const [tab, setTab] = useState<TabType>("current");
   const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState(false);
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated
@@ -35,13 +41,37 @@ function App() {
     skip: !isAuthenticated,
   });
 
+  const {
+    data: preOrders,
+    error: preOrdersError,
+    isLoading: preOrdersLoading,
+  } = useGetPreOrdersQuery(undefined, {
+    pollingInterval: 60000,
+    skip: !isAuthenticated,
+  });
+
   if (!isAuthenticated) {
     return <LoginPage />;
   }
 
-  const data = tab === "current" ? currentOrders : archiveOrders;
-  const error = tab === "current" ? currentError : archiveError;
-  const isLoading = tab === "current" ? currentLoading : archiveLoading;
+  const data =
+    tab === "current"
+      ? currentOrders
+      : tab === "archive"
+      ? archiveOrders
+      : preOrders;
+  const error =
+    tab === "current"
+      ? currentError
+      : tab === "archive"
+      ? archiveError
+      : preOrdersError;
+  const isLoading =
+    tab === "current"
+      ? currentLoading
+      : tab === "archive"
+      ? archiveLoading
+      : preOrdersLoading;
 
   const handleLogout = () => {
     dispatch(logout());
@@ -99,6 +129,14 @@ function App() {
             onClick={() => setTab("current")}
           >
             Текущие заказы
+          </button>
+          <button
+            className={`px-4 py-2 rounded-md ${
+              tab === "pre-orders" ? "bg-blue-500 text-white" : "bg-gray-200"
+            }`}
+            onClick={() => setTab("pre-orders")}
+          >
+            Предзаказы
           </button>
           <button
             className={`px-4 py-2 rounded-md ${

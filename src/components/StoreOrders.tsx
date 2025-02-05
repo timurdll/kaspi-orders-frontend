@@ -3,7 +3,7 @@ import { Store } from "../types/orders";
 import { OrderCard } from "./OrderCard";
 import { useDeleteStoreMutation } from "../redux/api";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
-import { Trash2 } from "lucide-react";
+// import { Trash2 } from "lucide-react";
 
 interface StoreOrdersProps {
   store: Store;
@@ -12,11 +12,10 @@ interface StoreOrdersProps {
 export const StoreOrders: React.FC<StoreOrdersProps> = ({ store }) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteStore, { isLoading: isDeleting }] = useDeleteStoreMutation();
-  console.log(store);
 
-  const handleDeleteClick = () => {
-    setIsDeleteModalOpen(true);
-  };
+  // const handleDeleteClick = () => {
+  //   setIsDeleteModalOpen(true);
+  // };
 
   const handleDeleteConfirm = async () => {
     try {
@@ -35,13 +34,13 @@ export const StoreOrders: React.FC<StoreOrdersProps> = ({ store }) => {
           <h2 className="text-xl font-semibold text-red-800">
             {store.storeName}
           </h2>
-          <button
+          {/* <button
             onClick={handleDeleteClick}
             className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
             title="Удалить магазин"
           >
             <Trash2 size={20} />
-          </button>
+          </button> */}
         </div>
         <p className="text-red-600">{store.error}</p>
       </div>
@@ -56,18 +55,18 @@ export const StoreOrders: React.FC<StoreOrdersProps> = ({ store }) => {
           <span className="text-sm text-gray-500">
             {store.orders?.length || 0} заказов
           </span>
-          <button
+          {/* <button
             onClick={handleDeleteClick}
             className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
             title="Удалить магазин"
           >
             <Trash2 size={20} />
-          </button>
+          </button> */}
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {store.orders?.map((order) => (
-          <OrderCard key={order.id} order={order} />
+          <OrderCard storeName={store.storeName} key={order.id} order={order} />
         ))}
       </div>
 

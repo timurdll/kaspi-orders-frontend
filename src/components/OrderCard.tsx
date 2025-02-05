@@ -4,17 +4,18 @@ import { KaspiOrder } from "../types/orders";
 import { formatDate } from "../utils/format";
 import { Copy } from "lucide-react";
 import { useCopyNotification } from "./GlobalCopyNotification";
+import { useUpdateOrderStatusMutation } from "../redux/api";
 
 interface OrderCardProps {
   order: KaspiOrder;
+  storeName: string; // передаём название магазина
 }
 
-// Компонент кнопки копирования с использованием глобального уведомления
 const CopyButton: React.FC<{ text: string }> = ({ text }) => {
   const showNotification = useCopyNotification();
 
   const handleClick = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Предотвращаем всплытие клика, чтобы не переключался цвет карточки
+    e.stopPropagation();
     try {
       await navigator.clipboard.writeText(text);
       showNotification("Скопировано!");
@@ -34,9 +35,9 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
-export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
+export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
   const { attributes, products } = order;
-  const orderId = attributes.code; // Используем ID заказа как идентификатор
+  const orderId = attributes.code;
 
   const getInitialColor = () => {
     return !attributes.isKaspiDelivery
@@ -48,7 +49,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
       : "bg-white";
   };
 
-  // Загружаем цвет из localStorage или используем стандартный
   const [bgColor, setBgColor] = useState(() => {
     return localStorage.getItem(`order-${orderId}`) || getInitialColor();
   });
@@ -57,15 +57,34 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
     localStorage.setItem(`order-${orderId}`, bgColor);
   }, [bgColor, orderId]);
 
-  // Переключение цвета карточки при клике по области карточки
   const toggleColor = () => {
     setBgColor((prev) =>
       prev === "bg-green-300" ? getInitialColor() : "bg-green-300"
     );
   };
 
-  // Формируем полное имя клиента
   const clientFullName = `${attributes.customer.firstName} ${attributes.customer.lastName}`;
+
+  // Хук для обновления статуса заказа (формирование накладной)
+  const [updateOrderStatus, { isLoading: isUpdating }] =
+    useUpdateOrderStatusMutation();
+
+  const handleGetWaybill = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const result = await updateOrderStatus({
+        orderId: attributes.code,
+        code: attributes.code,
+        storeName, // передаём название магазина
+      }).unwrap();
+
+      alert(`Накладная получена: ${result.waybill}`);
+      // При необходимости можно обновить локальное состояние или выполнить refetch
+    } catch (error: any) {
+      console.error("Ошибка получения накладной:", error);
+      alert("Ошибка при получении накладной");
+    }
+  };
 
   return (
     <div
@@ -82,8 +101,36 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
             {formatDate(attributes.creationDate)}
           </p>
         </div>
+        {/* Отображаем блок с кнопкой/ссылкой только если:
+              - Заказ с доставкой Kaspi (attributes.isKaspiDelivery === true)
+              - Заказ не является предзаказом (attributes.preOrder !== true) */}
+        {attributes.isKaspiDelivery && !attributes.preOrder && (
+          <>
+            {attributes.kaspiDelivery?.waybill ? (
+              // Если накладная уже сформирована, выводим ссылку
+              <a
+                href={attributes.kaspiDelivery.waybill}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Накладная
+              </a>
+            ) : (
+              // Если накладная ещё не сформирована, выводим кнопку для формирования
+              <button
+                onClick={handleGetWaybill}
+                disabled={isUpdating}
+                className="px-3 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600"
+              >
+                {isUpdating ? "Загрузка..." : "Сформировать накладную"}
+              </button>
+            )}
+          </>
+        )}
       </div>
-
+      {/* Остальной JSX карточки */}
       <div className="grid grid-cols-2 gap-2">
         <div>
           <h4 className="font-medium text-xs mb-1">Клиент</h4>
@@ -107,7 +154,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
           </p>
         </div>
       </div>
-
       <div className="mt-2">
         <h4 className="font-medium text-xs mb-1">Товары</h4>
         <ul className="list-disc list-inside text-xs">

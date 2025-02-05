@@ -1,3 +1,4 @@
+// api.ts
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { OrdersResponse } from "../types/orders";
 import { RootState } from "./store";
@@ -13,6 +14,18 @@ interface Store {
 interface CreateStoreDto {
   name: string;
   apiKey: string;
+}
+
+// Тип ответа обновления статуса (содержит waybill)
+interface UpdateOrderStatusResponse {
+  waybill: string;
+}
+
+// Тип параметров для обновления статуса заказа
+interface UpdateOrderStatusDto {
+  orderId: string;
+  code: string;
+  storeName: string;
 }
 
 export const api = createApi({
@@ -47,6 +60,10 @@ export const api = createApi({
       query: () => "orders/archive",
       providesTags: ["Store"],
     }),
+    getPreOrders: builder.query<OrdersResponse, void>({
+      query: () => "orders/pre-orders",
+      providesTags: ["Store"],
+    }),
     getStores: builder.query<Store[], void>({
       query: () => "stores",
       providesTags: ["Store"],
@@ -66,6 +83,17 @@ export const api = createApi({
       }),
       invalidatesTags: ["Store"],
     }),
+    // Новый endpoint для обновления статуса заказа
+    updateOrderStatus: builder.mutation<
+      UpdateOrderStatusResponse,
+      UpdateOrderStatusDto
+    >({
+      query: (payload) => ({
+        url: "orders/status",
+        method: "POST",
+        body: payload,
+      }),
+    }),
   }),
 });
 
@@ -73,7 +101,9 @@ export const {
   useLoginMutation,
   useGetOrdersQuery,
   useGetArchiveOrdersQuery,
+  useGetPreOrdersQuery,
   useGetStoresQuery,
   useAddStoreMutation,
   useDeleteStoreMutation,
+  useUpdateOrderStatusMutation, // экспортируем новый хук
 } = api;
