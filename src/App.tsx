@@ -54,6 +54,7 @@ function App() {
     return <LoginPage />;
   }
 
+  // Определяем общее данные для активной вкладки (если нужно использовать data.stores ниже)
   const data =
     tab === "current"
       ? currentOrders
@@ -100,6 +101,49 @@ function App() {
     return null;
   }
 
+  // Пороговое время для разделения заказов "на доставку сегодня" и "на доставку завтра"
+  // Здесь считается, что заказы с creationDate меньше, чем сегодня 13:00 – доставляют сегодня
+  const now = new Date();
+  const cutoff = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    13,
+    0,
+    0,
+    0
+  );
+  const cutoffTime = cutoff.getTime();
+
+  // Функция агрегации заказов для всех магазинов
+  const aggregateCounts = (ordersData: any) => {
+    let todayCount = 0;
+    let tomorrowCount = 0;
+    let totalCount = 0;
+
+    ordersData.stores?.forEach((store: any) => {
+      if (store.orders) {
+        // Заказы, созданные до 13:00 – для доставки сегодня
+        const todayOrders = store.orders.filter(
+          (order: any) => order.attributes.creationDate < cutoffTime
+        );
+        // Заказы, созданные после или равные 13:00 – для доставки завтра
+        const tomorrowOrders = store.orders.filter(
+          (order: any) => order.attributes.creationDate >= cutoffTime
+        );
+        todayCount += todayOrders.length;
+        tomorrowCount += tomorrowOrders.length;
+        totalCount += store.orders.length;
+      }
+    });
+    return { todayCount, tomorrowCount, totalCount };
+  };
+
+  // Вычисляем агрегированные данные для каждой вкладки (если они доступны)
+  const currentCounts = currentOrders ? aggregateCounts(currentOrders) : null;
+  const archiveCounts = archiveOrders ? aggregateCounts(archiveOrders) : null;
+  const preOrdersCounts = preOrders ? aggregateCounts(preOrders) : null;
+
   return (
     <CopyNotificationProvider>
       <div className="container mx-auto px-4 py-8">
@@ -122,40 +166,60 @@ function App() {
         </div>
 
         <div className="flex space-x-4 mb-6">
+          {/* Текущие заказы: показываем два кружка – для доставки сегодня и завтра */}
           <button
-            className={`px-4 py-2 rounded-md ${
+            className={`relative px-4 py-2 rounded-md ${
               tab === "current" ? "bg-blue-500 text-white" : "bg-gray-200"
             }`}
             onClick={() => setTab("current")}
           >
             Текущие заказы
+            {currentCounts && (
+              <>
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                  {currentCounts.todayCount}
+                </span>
+                <span className="absolute -top-2 right-6 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                  {currentCounts.tomorrowCount}
+                </span>
+              </>
+            )}
           </button>
+
+          {/* Предзаказы: показываем общее количество */}
           <button
-            className={`px-4 py-2 rounded-md ${
+            className={`relative px-4 py-2 rounded-md ${
               tab === "pre-orders" ? "bg-blue-500 text-white" : "bg-gray-200"
             }`}
             onClick={() => setTab("pre-orders")}
           >
             Предзаказы
+            {preOrdersCounts && (
+              <span className="absolute -top-2 -right-2 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                {preOrdersCounts.totalCount}
+              </span>
+            )}
           </button>
+
+          {/* Архивные заказы: показываем общее количество */}
           <button
-            className={`px-4 py-2 rounded-md ${
+            className={`relative px-4 py-2 rounded-md ${
               tab === "archive" ? "bg-blue-500 text-white" : "bg-gray-200"
             }`}
             onClick={() => setTab("archive")}
           >
             Архивные заказы
+            {archiveCounts && (
+              <span className="absolute -top-2 -right-2 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                {archiveCounts.totalCount}
+              </span>
+            )}
           </button>
         </div>
 
-        <TotalStats
-          totalOrders={data.totalStats.totalOrders}
-          totalRevenue={data.totalStats.totalRevenue}
-          ordersByStatus={data.totalStats.ordersByStatus}
-        />
-
+        {/* Отображение списка заказов по магазинам */}
         <div className="space-y-6">
-          {data.stores.map((store) => (
+          {data.stores.map((store: any) => (
             <StoreOrders key={store.storeName} store={store} />
           ))}
         </div>
