@@ -4,7 +4,6 @@ import {
   useGetArchiveOrdersQuery,
   useGetPreOrdersQuery,
 } from "./redux/api";
-import { TotalStats } from "./components/TotalStats";
 import { StoreOrders } from "./components/StoreOrders";
 import { LoginPage } from "./components/LoginPage";
 import { AddStoreModal } from "./components/AddStoreModal";
