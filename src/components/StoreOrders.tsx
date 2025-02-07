@@ -13,6 +13,8 @@ export const StoreOrders: React.FC<StoreOrdersProps> = ({ store }) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteStore, { isLoading: isDeleting }] = useDeleteStoreMutation();
 
+  console.log(store);
+
   const handleDeleteConfirm = async () => {
     try {
       await deleteStore(store.id).unwrap();
@@ -73,27 +75,33 @@ export const StoreOrders: React.FC<StoreOrdersProps> = ({ store }) => {
         </div>
       </div>
 
-      {/* Кнопки‑вкладки */}
+      {/* Кнопки‑вкладки с бейджами, аналогичными дизайну из App */}
       <div className="mb-4 flex space-x-2">
         <button
           onClick={() => setActiveTab("today")}
-          className={`px-4 py-2 rounded ${
+          className={`relative px-4 py-2 rounded ${
             activeTab === "today"
               ? "bg-indigo-600 text-white"
               : "bg-gray-200 text-gray-700"
           }`}
         >
-          Доставить сегодня
+          Доставить сегодня до 20:00
+          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+            {todayOrders.length}
+          </span>
         </button>
         <button
           onClick={() => setActiveTab("tomorrow")}
-          className={`px-4 py-2 rounded ${
+          className={`relative px-4 py-2 rounded ${
             activeTab === "tomorrow"
               ? "bg-indigo-600 text-white"
               : "bg-gray-200 text-gray-700"
           }`}
         >
           Доставить завтра
+          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+            {tomorrowOrders.length}
+          </span>
         </button>
       </div>
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useGetOrdersQuery,
   useGetArchiveOrdersQuery,
@@ -22,6 +22,7 @@ function App() {
   );
   const dispatch = useDispatch();
 
+  // Получаем данные через RTK Query с периодическим опросом (pollingInterval 60 сек)
   const {
     data: currentOrders,
     error: currentError,
@@ -49,35 +50,54 @@ function App() {
     skip: !isAuthenticated,
   });
 
+  // Локальное состояние для хранения последних успешно загруженных данных по каждому типу заказов
+  const [cachedCurrentOrders, setCachedCurrentOrders] = useState<any>(null);
+  useEffect(() => {
+    if (currentOrders) {
+      setCachedCurrentOrders(currentOrders);
+    }
+  }, [currentOrders]);
+
+  const [cachedArchiveOrders, setCachedArchiveOrders] = useState<any>(null);
+  useEffect(() => {
+    if (archiveOrders) {
+      setCachedArchiveOrders(archiveOrders);
+    }
+  }, [archiveOrders]);
+
+  const [cachedPreOrders, setCachedPreOrders] = useState<any>(null);
+  useEffect(() => {
+    if (preOrders) {
+      setCachedPreOrders(preOrders);
+    }
+  }, [preOrders]);
+
   if (!isAuthenticated) {
     return <LoginPage />;
   }
 
-  // Определяем общее данные для активной вкладки (если нужно использовать data.stores ниже)
-  const data =
-    tab === "current"
-      ? currentOrders
-      : tab === "archive"
-      ? archiveOrders
-      : preOrders;
-  const error =
-    tab === "current"
-      ? currentError
-      : tab === "archive"
-      ? archiveError
-      : preOrdersError;
-  const isLoading =
-    tab === "current"
-      ? currentLoading
-      : tab === "archive"
-      ? archiveLoading
-      : preOrdersLoading;
+  // Определяем данные, ошибку и состояние загрузки для активной вкладки, используя свежие данные или кеш, если произошла ошибка
+  let data, error, isLoading;
+  if (tab === "current") {
+    data = currentOrders || cachedCurrentOrders;
+    error = currentError;
+    isLoading = currentLoading;
+  } else if (tab === "archive") {
+    data = archiveOrders || cachedArchiveOrders;
+    error = archiveError;
+    isLoading = archiveLoading;
+  } else {
+    data = preOrders || cachedPreOrders;
+    error = preOrdersError;
+    isLoading = preOrdersLoading;
+  }
 
   const handleLogout = () => {
     dispatch(logout());
   };
 
-  if (isLoading) {
+  // Если данные ещё не были загружены (и кеш пуст), показываем спиннер
+  if (isLoading && !data) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -85,7 +105,8 @@ function App() {
     );
   }
 
-  if (error) {
+  // Если произошла ошибка, но кешированных данных ещё нет — показываем сообщение об ошибке
+  if (error && !data) {
     return (
       <div className="p-4">
         <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
@@ -101,7 +122,6 @@ function App() {
   }
 
   // Пороговое время для разделения заказов "на доставку сегодня" и "на доставку завтра"
-  // Здесь считается, что заказы с creationDate меньше, чем сегодня 13:00 – доставляют сегодня
   const now = new Date();
   const cutoff = new Date(
     now.getFullYear(),
@@ -122,11 +142,9 @@ function App() {
 
     ordersData.stores?.forEach((store: any) => {
       if (store.orders) {
-        // Заказы, созданные до 13:00 – для доставки сегодня
         const todayOrders = store.orders.filter(
           (order: any) => order.attributes.creationDate < cutoffTime
         );
-        // Заказы, созданные после или равные 13:00 – для доставки завтра
         const tomorrowOrders = store.orders.filter(
           (order: any) => order.attributes.creationDate >= cutoffTime
         );
@@ -165,7 +183,7 @@ function App() {
         </div>
 
         <div className="flex space-x-4 mb-6">
-          {/* Текущие заказы: показываем два кружка – для доставки сегодня и завтра */}
+          {/* Текущие заказы */}
           <button
             className={`relative px-4 py-2 rounded-md ${
               tab === "current" ? "bg-blue-500 text-white" : "bg-gray-200"
@@ -174,18 +192,13 @@ function App() {
           >
             Текущие заказы
             {currentCounts && (
-              <>
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                  {currentCounts.todayCount}
-                </span>
-                <span className="absolute -top-2 right-6 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                  {currentCounts.tomorrowCount}
-                </span>
-              </>
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                {currentCounts.todayCount}
+              </span>
             )}
           </button>
 
-          {/* Предзаказы: показываем общее количество */}
+          {/* Предзаказы */}
           <button
             className={`relative px-4 py-2 rounded-md ${
               tab === "pre-orders" ? "bg-blue-500 text-white" : "bg-gray-200"
@@ -200,7 +213,7 @@ function App() {
             )}
           </button>
 
-          {/* Архивные заказы: показываем общее количество */}
+          {/* Архивные заказы */}
           <button
             className={`relative px-4 py-2 rounded-md ${
               tab === "archive" ? "bg-blue-500 text-white" : "bg-gray-200"

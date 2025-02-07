@@ -24,7 +24,6 @@ interface UpdateOrderStatusResponse {
 // Тип параметров для обновления статуса заказа
 interface UpdateOrderStatusDto {
   orderId: string;
-  code: string;
   storeName: string;
 }
 

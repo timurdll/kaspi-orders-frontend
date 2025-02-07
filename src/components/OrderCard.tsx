@@ -1,8 +1,8 @@
 // OrderCard.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { KaspiOrder } from "../types/orders";
 import { formatDate } from "../utils/format";
-import { Copy } from "lucide-react";
+import { Copy, FileText } from "lucide-react";
 import { useCopyNotification } from "./GlobalCopyNotification";
 import { useUpdateOrderStatusMutation } from "../redux/api";
 
@@ -13,7 +13,6 @@ interface OrderCardProps {
 
 const CopyButton: React.FC<{ text: string }> = ({ text }) => {
   const showNotification = useCopyNotification();
-
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -23,7 +22,6 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
       console.error("Ошибка копирования:", err);
     }
   };
-
   return (
     <button
       onClick={handleClick}
@@ -35,137 +33,184 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
+// Функция для определения начального статуса
+const getInitialStatus = (
+  order: KaspiOrder
+): "new" | "invoice" | "assembled" => {
+  const { attributes } = order;
+  // Если заказ собран (если поле assembled установлено в true), то статус assembled
+  if (attributes.assembled) return "assembled";
+  // Если заказ относится к Kaspi-доставке и накладная сформирована, то статус invoice
+  if (attributes.isKaspiDelivery && attributes.kaspiDelivery?.waybill)
+    return "invoice";
+  // В остальных случаях – новый заказ
+  return "new";
+};
+
 export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
   const { attributes, products } = order;
-  const orderId = attributes.code;
+  const orderId = order.id;
 
-  const getInitialColor = () => {
-    return !attributes.isKaspiDelivery
-      ? "bg-blue-300"
-      : attributes.kaspiDelivery?.express
-      ? "bg-red-300"
-      : attributes.assembled
-      ? "bg-yellow-300"
-      : "bg-white";
-  };
+  // Статусы:
+  // "new"      → красный фон (заказ только пришел)
+  // "invoice"  → жёлтый фон (накладная получена/сформирована)
+  // "assembled"→ зелёный фон (заказ собран)
+  const [cardStatus, setCardStatus] = useState<"new" | "invoice" | "assembled">(
+    getInitialStatus(order)
+  );
 
-  const [bgColor, setBgColor] = useState(() => {
-    return localStorage.getItem(`order-${orderId}`) || getInitialColor();
-  });
+  // Фоновый цвет в зависимости от статуса
+  const bgColor =
+    cardStatus === "new"
+      ? "bg-red-50 border-red-200"
+      : cardStatus === "invoice"
+      ? "bg-yellow-50 border-yellow-200"
+      : "bg-green-50 border-green-200";
 
-  useEffect(() => {
-    localStorage.setItem(`order-${orderId}`, bgColor);
-  }, [bgColor, orderId]);
+  // Определяем текст и цвет для тега доставки
+  // Определяем текст и цвет для тега доставки
+  let deliveryTag = "";
+  let deliveryTagColor = "";
+  if (attributes.isKaspiDelivery) {
+    // Используем строгое сравнение или приведение к булевому значению
+    if (attributes.kaspiDelivery?.express === true) {
+      deliveryTag = "Express доставка";
+      deliveryTagColor = "bg-purple-100 text-purple-800";
+    } else {
+      deliveryTag = "Kaspi доставка";
+      deliveryTagColor = "bg-blue-100 text-blue-800";
+    }
+  } else {
+    if (attributes.deliveryMode === "DELIVERY_PICKUP") {
+      deliveryTag = "Самовывоз";
+      deliveryTagColor = "bg-orange-100 text-orange-800";
+    } else if (attributes.deliveryMode === "DELIVERY_LOCAL") {
+      deliveryTag = "Своя доставка";
+      deliveryTagColor = "bg-green-100 text-green-800";
+    }
+  }
 
-  const toggleColor = () => {
-    setBgColor((prev) =>
-      prev === "bg-green-300" ? getInitialColor() : "bg-green-300"
-    );
-  };
-
-  const clientFullName = `${attributes.customer.firstName} ${attributes.customer.lastName}`;
-
-  // Хук для обновления статуса заказа (формирование накладной)
+  // Хук для обновления статуса заказа (формирование/получение накладной)
   const [updateOrderStatus, { isLoading: isUpdating }] =
     useUpdateOrderStatusMutation();
 
   const handleGetWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const result = await updateOrderStatus({
-        orderId: attributes.code,
-        code: attributes.code,
-        storeName, // передаём название магазина
+      const response = await updateOrderStatus({
+        orderId,
+        storeName,
       }).unwrap();
-
-      alert(`Накладная получена: ${result.waybill}`);
-      // При необходимости можно обновить локальное состояние или выполнить refetch
+      if (response.waybill) {
+        window.open(response.waybill, "_blank");
+        // Переводим карточку в статус "invoice"
+        setCardStatus("invoice");
+      }
     } catch (error: any) {
       console.error("Ошибка получения накладной:", error);
       alert("Ошибка при получении накладной");
     }
   };
 
+  // Обработчик для установки статуса "assembled" вручную (заказ собран)
+  const handleMarkAssembled = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCardStatus("assembled");
+  };
+
+  const clientFullName = `${attributes.customer.firstName} ${attributes.customer.lastName}`;
+
   return (
     <div
-      className={`border rounded-lg shadow p-3 cursor-pointer ${bgColor} transition-colors duration-300`}
-      onClick={toggleColor}
+      className={`rounded-lg border p-4 ${bgColor} transition-colors duration-300`}
     >
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex justify-between items-start mb-2">
+        <h3 className="text-lg font-medium">{storeName}</h3>
         <div>
-          <h3 className="text-base font-semibold inline-flex items-center">
-            Заказ #{orderId}
-            <CopyButton text={orderId} />
-          </h3>
-          <p className="text-xs text-gray-500">
-            {formatDate(attributes.creationDate)}
-          </p>
-        </div>
-        {/* Отображаем блок с кнопкой/ссылкой только если:
-              - Заказ с доставкой Kaspi (attributes.isKaspiDelivery === true)
-              - Заказ не является предзаказом (attributes.preOrder !== true) */}
-        {attributes.isKaspiDelivery && !attributes.preOrder && (
-          <>
-            {attributes.kaspiDelivery?.waybill ? (
-              // Если накладная уже сформирована, выводим ссылку
-              <a
-                href={attributes.kaspiDelivery.waybill}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
-                onClick={(e) => e.stopPropagation()}
-              >
-                Накладная
-              </a>
-            ) : (
-              // Если накладная ещё не сформирована, выводим кнопку для формирования
-              <button
-                onClick={handleGetWaybill}
-                disabled={isUpdating}
-                className="px-3 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600"
-              >
-                {isUpdating ? "Загрузка..." : "Сформировать накладную"}
-              </button>
-            )}
-          </>
-        )}
-      </div>
-      {/* Остальной JSX карточки */}
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <h4 className="font-medium text-xs mb-1">Клиент</h4>
-          <p className="text-xs inline-flex items-center">
-            {clientFullName}
-            <CopyButton text={clientFullName} />
-          </p>
-          <p className="text-xs text-gray-600 inline-flex items-center">
-            {attributes.customer.cellPhone}
-            <CopyButton text={attributes.customer.cellPhone} />
-          </p>
-        </div>
-        <div></div>
-        <div className="col-span-2">
-          <h4 className="font-medium text-xs mb-1">Адрес доставки</h4>
-          <p className="text-xs text-gray-700 inline-flex items-center">
-            {attributes.deliveryAddress?.formattedAddress || ""}
-            <CopyButton
-              text={attributes.deliveryAddress?.formattedAddress || ""}
-            />
-          </p>
+          <span
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${deliveryTagColor}`}
+          >
+            {deliveryTag}
+          </span>
         </div>
       </div>
+
+      <div className="mb-2">
+        <h4 className="text-base font-semibold inline-flex items-center">
+          Заказ #{orderId}
+          <CopyButton text={orderId} />
+        </h4>
+        <p className="text-xs text-gray-700">
+          {formatDate(attributes.creationDate)}
+        </p>
+      </div>
+
+      <div className="mb-2 space-y-1">
+        <p className="text-sm text-gray-600">
+          Клиент: {clientFullName}
+          <CopyButton text={clientFullName} />
+        </p>
+        <p className="text-sm text-gray-600">
+          Телефон: {attributes.customer.cellPhone}
+          <CopyButton text={attributes.customer.cellPhone} />
+        </p>
+        <p className="text-sm text-gray-600">
+          Адрес: {attributes.deliveryAddress?.formattedAddress || ""}
+          <CopyButton
+            text={attributes.deliveryAddress?.formattedAddress || ""}
+          />
+        </p>
+      </div>
+
       <div className="mt-2">
-        <h4 className="font-medium text-xs mb-1">Товары</h4>
-        <ul className="list-disc list-inside text-xs">
+        <h4 className="font-medium text-sm">Товары:</h4>
+        <ul className="list-disc list-inside text-sm">
           {products.map((product, index) => (
-            <li key={index} className="inline-flex items-center">
+            <li key={index} className="flex items-center">
               <span>
                 {product.name} (x{product.quantity})
               </span>
-              <CopyButton text={product.name} />
+              <CopyButton text={`${product.name} (x${product.quantity})`} />
             </li>
           ))}
         </ul>
+      </div>
+
+      {attributes.isKaspiDelivery && !attributes.preOrder && (
+        <div className="mt-4">
+          {attributes.kaspiDelivery?.waybill ? (
+            <a
+              href={attributes.kaspiDelivery.waybill}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Получить накладную
+            </a>
+          ) : (
+            <button
+              onClick={handleGetWaybill}
+              disabled={isUpdating}
+              className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              {isUpdating ? "Загрузка..." : "Сформировать накладную"}
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="mt-4">
+        {cardStatus !== "assembled" && (
+          <button
+            onClick={handleMarkAssembled}
+            className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
+            Отметить, что заказ собран
+          </button>
+        )}
       </div>
     </div>
   );
