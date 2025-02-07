@@ -1,5 +1,5 @@
 // OrderCard.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { KaspiOrder } from "../types/orders";
 import { formatDate } from "../utils/format";
 import { Copy, FileText } from "lucide-react";
@@ -8,7 +8,7 @@ import { useUpdateOrderStatusMutation } from "../redux/api";
 
 interface OrderCardProps {
   order: KaspiOrder;
-  storeName: string; // передаём название магазина
+  storeName: string;
 }
 
 const CopyButton: React.FC<{ text: string }> = ({ text }) => {
@@ -33,17 +33,14 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
-// Функция для определения начального статуса
+// Определяем начальный статус заказа на основании его данных
 const getInitialStatus = (
   order: KaspiOrder
 ): "new" | "invoice" | "assembled" => {
   const { attributes } = order;
-  // Если заказ собран (если поле assembled установлено в true), то статус assembled
   if (attributes.assembled) return "assembled";
-  // Если заказ относится к Kaspi-доставке и накладная сформирована, то статус invoice
   if (attributes.isKaspiDelivery && attributes.kaspiDelivery?.waybill)
     return "invoice";
-  // В остальных случаях – новый заказ
   return "new";
 };
 
@@ -51,13 +48,19 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
   const { attributes, products } = order;
   const orderId = order.id;
 
-  // Статусы:
-  // "new"      → красный фон (заказ только пришел)
-  // "invoice"  → жёлтый фон (накладная получена/сформирована)
-  // "assembled"→ зелёный фон (заказ собран)
+  // Локальный стейт для статуса карточки и ссылки накладной
   const [cardStatus, setCardStatus] = useState<"new" | "invoice" | "assembled">(
     getInitialStatus(order)
   );
+  const [invoiceLink, setInvoiceLink] = useState<string | null>(
+    order.attributes.kaspiDelivery?.waybill || null
+  );
+
+  // Обновляем локальный стейт, если изменился order (например, после refetch)
+  useEffect(() => {
+    setInvoiceLink(order.attributes.kaspiDelivery?.waybill || null);
+    setCardStatus(getInitialStatus(order));
+  }, [order]);
 
   // Фоновый цвет в зависимости от статуса
   const bgColor =
@@ -68,11 +71,9 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
       : "bg-green-50 border-green-200";
 
   // Определяем текст и цвет для тега доставки
-  // Определяем текст и цвет для тега доставки
   let deliveryTag = "";
   let deliveryTagColor = "";
   if (attributes.isKaspiDelivery) {
-    // Используем строгое сравнение или приведение к булевому значению
     if (attributes.kaspiDelivery?.express === true) {
       deliveryTag = "Express доставка";
       deliveryTagColor = "bg-purple-100 text-purple-800";
@@ -90,7 +91,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
     }
   }
 
-  // Хук для обновления статуса заказа (формирование/получение накладной)
   const [updateOrderStatus, { isLoading: isUpdating }] =
     useUpdateOrderStatusMutation();
 
@@ -102,8 +102,10 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
         storeName,
       }).unwrap();
       if (response.waybill) {
+        // После успешной мутации refetch произойдёт автоматически,
+        // но можно сразу сохранить локально и открыть накладную:
+        setInvoiceLink(response.waybill);
         window.open(response.waybill, "_blank");
-        // Переводим карточку в статус "invoice"
         setCardStatus("invoice");
       }
     } catch (error: any) {
@@ -112,7 +114,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
     }
   };
 
-  // Обработчик для установки статуса "assembled" вручную (заказ собран)
   const handleMarkAssembled = (e: React.MouseEvent) => {
     e.stopPropagation();
     setCardStatus("assembled");
@@ -137,8 +138,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
 
       <div className="mb-2">
         <h4 className="text-base font-semibold inline-flex items-center">
-          Заказ #{orderId}
-          <CopyButton text={orderId} />
+          Заказ #{attributes.code}
+          <CopyButton text={attributes.code} />
         </h4>
         <p className="text-xs text-gray-700">
           {formatDate(attributes.creationDate)}
@@ -178,9 +179,9 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
 
       {attributes.isKaspiDelivery && !attributes.preOrder && (
         <div className="mt-4">
-          {attributes.kaspiDelivery?.waybill ? (
+          {invoiceLink ? (
             <a
-              href={attributes.kaspiDelivery.waybill}
+              href={invoiceLink}
               target="_blank"
               rel="noopener noreferrer"
               className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"

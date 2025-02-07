@@ -232,7 +232,11 @@ function App() {
         {/* Отображение списка заказов по магазинам */}
         <div className="space-y-6">
           {data.stores.map((store: any) => (
-            <StoreOrders key={store.storeName} store={store} />
+            <StoreOrders
+              key={store.storeName}
+              store={store}
+              type={tab} // "current" | "archive" | "pre-orders"
+            />
           ))}
         </div>
 
