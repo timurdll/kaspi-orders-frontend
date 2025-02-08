@@ -126,7 +126,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
       className={`rounded-lg border p-4 ${bgColor} transition-colors duration-300`}
     >
       <div className="flex justify-between items-start mb-2">
-        <h3 className="text-lg font-medium">{storeName}</h3>
+        {/* <h3 className="text-lg font-medium">{storeName}</h3> */}
         <div>
           <span
             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${deliveryTagColor}`}
@@ -138,7 +138,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
 
       <div className="mb-2">
         <h4 className="text-base font-semibold inline-flex items-center">
-          Заказ #{attributes.code}
+          {attributes.code}
           <CopyButton text={attributes.code} />
         </h4>
         <p className="text-xs text-gray-700">
@@ -148,15 +148,15 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
 
       <div className="mb-2 space-y-1">
         <p className="text-sm text-gray-600">
-          Клиент: {clientFullName}
+          {clientFullName}
           <CopyButton text={clientFullName} />
         </p>
         <p className="text-sm text-gray-600">
-          Телефон: {attributes.customer.cellPhone}
+          {attributes.customer.cellPhone}
           <CopyButton text={attributes.customer.cellPhone} />
         </p>
         <p className="text-sm text-gray-600">
-          Адрес: {attributes.deliveryAddress?.formattedAddress || ""}
+          {attributes.deliveryAddress?.formattedAddress || ""}
           <CopyButton
             text={attributes.deliveryAddress?.formattedAddress || ""}
           />
@@ -164,7 +164,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
       </div>
 
       <div className="mt-2">
-        <h4 className="font-medium text-sm">Товары:</h4>
+        {/* <h4 className="font-medium text-sm">Товары:</h4> */}
         <ul className="list-disc list-inside text-sm">
           {products.map((product, index) => (
             <li key={index} className="flex items-center">
