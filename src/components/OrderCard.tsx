@@ -13,15 +13,44 @@ interface OrderCardProps {
 
 const CopyButton: React.FC<{ text: string }> = ({ text }) => {
   const showNotification = useCopyNotification();
+
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(text);
-      showNotification("Скопировано!");
-    } catch (err) {
-      console.error("Ошибка копирования:", err);
+
+    // Проверяем, доступен ли Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        showNotification("Скопировано!");
+      } catch (err) {
+        console.error("Ошибка копирования через Clipboard API:", err);
+      }
+    } else {
+      // Fallback-метод для старых браузеров или незащищенного контекста
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        // Стилизуем textarea так, чтобы он не влиял на интерфейс
+        textArea.style.position = "fixed";
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand("copy");
+        if (successful) {
+          showNotification("Скопировано!");
+        } else {
+          console.error("Fallback копирование не удалось");
+        }
+        document.body.removeChild(textArea);
+      } catch (err) {
+        console.error("Ошибка копирования (fallback):", err);
+      }
     }
   };
+
   return (
     <button
       onClick={handleClick}
@@ -125,15 +154,38 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
     <div
       className={`rounded-lg border p-4 ${bgColor} transition-colors duration-300`}
     >
-      <div className="flex justify-between items-start mb-2">
-        {/* <h3 className="text-lg font-medium">{storeName}</h3> */}
-        <div>
-          <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${deliveryTagColor}`}
-          >
-            {deliveryTag}
-          </span>
-        </div>
+      <div className="flex justify-between items-center">
+        {/* Тег доставки */}
+        <span
+          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${deliveryTagColor}`}
+        >
+          {deliveryTag}
+        </span>
+
+        {/* Кнопка получения накладной (отображается для Kaspi Delivery, не для предзаказов) */}
+        {attributes.isKaspiDelivery && !attributes.preOrder && (
+          <div>
+            {invoiceLink ? (
+              <a
+                href={invoiceLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+              >
+                <FileText size={16} />
+              </a>
+            ) : (
+              <button
+                onClick={handleGetWaybill}
+                disabled={isUpdating}
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 disabled:opacity-50"
+              >
+                <FileText size={16} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mb-2">
@@ -176,32 +228,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
           ))}
         </ul>
       </div>
-
-      {attributes.isKaspiDelivery && !attributes.preOrder && (
-        <div className="mt-4">
-          {invoiceLink ? (
-            <a
-              href={invoiceLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              Получить накладную
-            </a>
-          ) : (
-            <button
-              onClick={handleGetWaybill}
-              disabled={isUpdating}
-              className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              {isUpdating ? "Загрузка..." : "Сформировать накладную"}
-            </button>
-          )}
-        </div>
-      )}
 
       <div className="mt-4">
         {cardStatus !== "assembled" && (
