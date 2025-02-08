@@ -208,10 +208,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
           <CopyButton text={attributes.customer.cellPhone} />
         </p>
         <p className="text-sm text-gray-600">
-          {attributes.deliveryAddress?.formattedAddress || ""}
-          <CopyButton
-            text={attributes.deliveryAddress?.formattedAddress || ""}
-          />
+          {attributes.deliveryAddress?.formattedAddress && (
+            <p className="text-sm text-gray-600">
+              {attributes.deliveryAddress.formattedAddress}
+              <CopyButton text={attributes.deliveryAddress.formattedAddress} />
+            </p>
+          )}
         </p>
       </div>
 
