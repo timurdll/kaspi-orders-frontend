@@ -20,8 +20,9 @@ export const OrdersTypeTabs: React.FC<OrdersTabsProps> = ({
   onTabChange,
   counts,
 }) => {
+  // Класс "hidden md:flex" скроет вкладки на малых экранах (в режиме бургер-меню)
   return (
-    <div className="flex space-x-4 mb-6">
+    <div className="hidden md:flex space-x-4 mb-6">
       <button
         className={`relative px-4 py-2 rounded-md ${
           activeTab === "current" ? "bg-blue-500 text-white" : "bg-gray-200"

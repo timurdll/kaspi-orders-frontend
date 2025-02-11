@@ -4,7 +4,7 @@ import {
   useGetOrdersQuery,
   useGetArchiveOrdersQuery,
   useGetPreOrdersQuery,
-  useGetReturnedOrdersQuery, // импорт нового хука
+  useGetReturnedOrdersQuery,
 } from "../redux/api";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../redux/store";
@@ -16,6 +16,7 @@ import { Loader } from "./Loader";
 import { ErrorMessage } from "./ErrorMessage";
 import { AddStoreModal } from "./AddStoreModal";
 import { CopyNotificationProvider } from "./GlobalCopyNotification";
+import { BurgerMenuTabs } from "./BurgerMenuTabs";
 
 interface AggregatedCounts {
   todayCount: number;
@@ -57,7 +58,6 @@ const aggregateCounts = (ordersData: any): AggregatedCounts => {
 };
 
 export const Dashboard: React.FC = () => {
-  // Обновлённый тип вкладок
   const [tab, setTab] = useState<TabType>("current");
   const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState(false);
   const dispatch = useDispatch();
@@ -92,7 +92,6 @@ export const Dashboard: React.FC = () => {
     skip: !isAuthenticated,
   });
 
-  // Новый запрос для возвращённых заказов
   const {
     data: returnedOrders,
     error: returnedError,
@@ -102,7 +101,7 @@ export const Dashboard: React.FC = () => {
     skip: !isAuthenticated,
   });
 
-  // Кэшируем данные для каждого типа, чтобы при ошибке отображались последние полученные
+  // Кэширование данных на случай ошибки
   const [cachedCurrentOrders, setCachedCurrentOrders] = useState<any>(null);
   useEffect(() => {
     if (currentOrders) setCachedCurrentOrders(currentOrders);
@@ -162,7 +161,7 @@ export const Dashboard: React.FC = () => {
     current: currentCounts,
     archive: archiveCounts,
     preOrders: preOrdersCounts,
-    returned: returnedCounts, // передаём агрегированные данные для возвращённых заказов
+    returned: returnedCounts,
   };
 
   const handleLogout = () => {
@@ -176,7 +175,22 @@ export const Dashboard: React.FC = () => {
           onAddStore={() => setIsAddStoreModalOpen(true)}
           onLogout={handleLogout}
         />
-        <OrdersTypeTabs activeTab={tab} onTabChange={setTab} counts={counts} />
+        {/* На мобильных устройствах отображается бургер-меню с вкладками */}
+        <div className="md:hidden mb-4">
+          <BurgerMenuTabs
+            activeTab={tab}
+            onTabChange={setTab}
+            counts={counts}
+          />
+        </div>
+        {/* На десктопе можно оставить старые вкладки или скрыть бургер-меню */}
+        <div className="hidden md:flex mb-6">
+          <OrdersTypeTabs
+            activeTab={tab}
+            onTabChange={setTab}
+            counts={counts}
+          />
+        </div>
         <StoreOrdersList stores={data.stores} type={tab} />
         <AddStoreModal
           isOpen={isAddStoreModalOpen}
