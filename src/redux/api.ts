@@ -63,6 +63,11 @@ export const api = createApi({
       query: () => "orders/pre-orders",
       providesTags: ["Store"],
     }),
+    // Новый endpoint для возвращённых заказов:
+    getReturnedOrders: builder.query<OrdersResponse, void>({
+      query: () => "orders/returned",
+      providesTags: ["Store"],
+    }),
     getStores: builder.query<Store[], void>({
       query: () => "stores",
       providesTags: ["Store"],
@@ -82,8 +87,6 @@ export const api = createApi({
       }),
       invalidatesTags: ["Store"],
     }),
-    // Новый endpoint для обновления статуса заказа
-    // В api.ts в endpoint'е updateOrderStatus:
     updateOrderStatus: builder.mutation<
       UpdateOrderStatusResponse,
       UpdateOrderStatusDto
@@ -93,42 +96,13 @@ export const api = createApi({
         method: "POST",
         body: payload,
       }),
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+      invalidatesTags: ["Store"],
+      async onQueryStarted(arg, { queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          // Обновляем кэш запроса getOrders, чтобы найти нужный заказ и записать ему новую ссылку накладной
-          dispatch(
-            api.util.updateQueryData(
-              "getOrders",
-              undefined,
-              (draft: OrdersResponse) => {
-                // Обходим все магазины
-                draft.stores?.forEach((store) => {
-                  // Обновляем только если id заказа совпадает
-                  store.orders =
-                    store.orders?.map((order) => {
-                      if (order.id === arg.orderId) {
-                        return {
-                          ...order,
-                          attributes: {
-                            ...order.attributes,
-                            // Обновляем только нужное поле
-                            kaspiDelivery: {
-                              ...order.attributes.kaspiDelivery,
-                              waybill: data.waybill,
-                            },
-                          },
-                        };
-                      }
-                      return order;
-                    }) || [];
-                });
-              }
-            )
-          );
-          // Аналогично можно обновить кэш для getArchiveOrders и getPreOrders, если требуется.
+          console.log("Order updated successfully:", data.waybill, arg);
         } catch (error) {
-          // Если ошибка – ничего не обновляем
+          console.error("Error updating order status:", error);
         }
       },
     }),
@@ -140,8 +114,9 @@ export const {
   useGetOrdersQuery,
   useGetArchiveOrdersQuery,
   useGetPreOrdersQuery,
+  useGetReturnedOrdersQuery, // новый хук
   useGetStoresQuery,
   useAddStoreMutation,
   useDeleteStoreMutation,
-  useUpdateOrderStatusMutation, // экспортируем новый хук
+  useUpdateOrderStatusMutation,
 } = api;

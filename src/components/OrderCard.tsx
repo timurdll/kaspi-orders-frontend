@@ -11,13 +11,12 @@ interface OrderCardProps {
   storeName: string;
 }
 
+// Кнопка для копирования текста
 const CopyButton: React.FC<{ text: string }> = ({ text }) => {
   const showNotification = useCopyNotification();
 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-
-    // Проверяем, доступен ли Clipboard API
     if (navigator.clipboard && navigator.clipboard.writeText) {
       try {
         await navigator.clipboard.writeText(text);
@@ -26,11 +25,9 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
         console.error("Ошибка копирования через Clipboard API:", err);
       }
     } else {
-      // Fallback-метод для старых браузеров или незащищенного контекста
       try {
         const textArea = document.createElement("textarea");
         textArea.value = text;
-        // Стилизуем textarea так, чтобы он не влиял на интерфейс
         textArea.style.position = "fixed";
         textArea.style.top = "0";
         textArea.style.left = "0";
@@ -62,14 +59,14 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
-// Определяем начальный статус заказа на основании его данных
+// Определяем начальный статус заказа
+// Даже если накладная уже сформирована, при поступлении заказа статус всегда "new" (красный)
+// Если заказ уже собран, возвращаем "assembled"
 const getInitialStatus = (
   order: KaspiOrder
 ): "new" | "invoice" | "assembled" => {
   const { attributes } = order;
   if (attributes.assembled) return "assembled";
-  if (attributes.isKaspiDelivery && attributes.kaspiDelivery?.waybill)
-    return "invoice";
   return "new";
 };
 
@@ -77,7 +74,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
   const { attributes, products } = order;
   const orderId = order.id;
 
-  // Локальный стейт для статуса карточки и ссылки накладной
+  // Локальный стейт для статуса карточки и ссылки на накладную
   const [cardStatus, setCardStatus] = useState<"new" | "invoice" | "assembled">(
     getInitialStatus(order)
   );
@@ -85,21 +82,28 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
     order.attributes.kaspiDelivery?.waybill || null
   );
 
-  // Обновляем локальный стейт, если изменился order (например, после refetch)
+  // При изменении order обновляем статус и ссылку
   useEffect(() => {
     setInvoiceLink(order.attributes.kaspiDelivery?.waybill || null);
     setCardStatus(getInitialStatus(order));
   }, [order]);
 
-  // Фоновый цвет в зависимости от статуса
-  const bgColor =
-    cardStatus === "new"
-      ? "bg-red-50 border-red-200"
-      : cardStatus === "invoice"
-      ? "bg-yellow-50 border-yellow-200"
-      : "bg-green-50 border-green-200";
+  // Функция вычисления цвета карточки с учетом флага isKaspiDelivery и текущего статуса
+  const getBgColor = (): string => {
+    if (attributes.isKaspiDelivery) {
+      if (cardStatus === "new") return "bg-red-50 border-red-200";
+      if (cardStatus === "invoice") return "bg-yellow-50 border-yellow-200";
+      if (cardStatus === "assembled") return "bg-green-50 border-green-200";
+    } else {
+      // Для заказов без накладной используем красный для "new" и зеленый для "assembled"
+      if (cardStatus === "assembled") return "bg-green-50 border-green-200";
+      return "bg-red-50 border-red-200";
+    }
+  };
 
-  // Определяем текст и цвет для тега доставки
+  const bgColor = getBgColor();
+
+  // Определяем текст и стиль тега доставки
   let deliveryTag = "";
   let deliveryTagColor = "";
   if (attributes.isKaspiDelivery) {
@@ -123,19 +127,18 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
   const [updateOrderStatus, { isLoading: isUpdating }] =
     useUpdateOrderStatusMutation();
 
+  // Обработчик для получения накладной
   const handleGetWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const response = await updateOrderStatus({
-        orderId,
-        storeName,
-      }).unwrap();
+      const response = await updateOrderStatus({ orderId, storeName }).unwrap();
+      // Если накладная сформирована, обновляем состояние на "invoice" (жёлтый)
       if (response.waybill) {
-        // После успешной мутации refetch произойдёт автоматически,
-        // но можно сразу сохранить локально и открыть накладную:
         setInvoiceLink(response.waybill);
         window.open(response.waybill, "_blank");
         setCardStatus("invoice");
+      } else {
+        console.log("Накладная еще не сформирована, повторите запрос позже.");
       }
     } catch (error: any) {
       console.error("Ошибка получения накладной:", error);
@@ -143,6 +146,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
     }
   };
 
+  // Обработчик для отметки, что заказ собран (переводим статус в "assembled", зеленый)
   const handleMarkAssembled = (e: React.MouseEvent) => {
     e.stopPropagation();
     setCardStatus("assembled");
@@ -162,7 +166,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
           {deliveryTag}
         </span>
 
-        {/* Кнопка получения накладной (отображается для Kaspi Delivery, не для предзаказов) */}
+        {/* Кнопка получения накладной отображается только для Kaspi Delivery и не для предзаказов */}
         {attributes.isKaspiDelivery && !attributes.preOrder && (
           <div>
             {invoiceLink ? (
@@ -181,7 +185,11 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
                 disabled={isUpdating}
                 className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 disabled:opacity-50"
               >
-                <FileText size={16} />
+                {isUpdating ? (
+                  <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
+                ) : (
+                  <FileText size={16} />
+                )}
               </button>
             )}
           </div>
@@ -207,18 +215,15 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
           {attributes.customer.cellPhone}
           <CopyButton text={attributes.customer.cellPhone} />
         </p>
-        <p className="text-sm text-gray-600">
-          {attributes.deliveryAddress?.formattedAddress && (
-            <p className="text-sm text-gray-600">
-              {attributes.deliveryAddress.formattedAddress}
-              <CopyButton text={attributes.deliveryAddress.formattedAddress} />
-            </p>
-          )}
-        </p>
+        {attributes.deliveryAddress?.formattedAddress && (
+          <p className="text-sm text-gray-600">
+            {attributes.deliveryAddress.formattedAddress}
+            <CopyButton text={attributes.deliveryAddress.formattedAddress} />
+          </p>
+        )}
       </div>
 
       <div className="mt-2">
-        {/* <h4 className="font-medium text-sm">Товары:</h4> */}
         <ul className="list-disc list-inside text-sm">
           {products.map((product, index) => (
             <li key={index} className="flex items-center">
