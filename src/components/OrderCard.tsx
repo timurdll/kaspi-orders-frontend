@@ -89,7 +89,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
   }, [order]);
 
   // Функция вычисления цвета карточки с учетом флага isKaspiDelivery и текущего статуса
-  const getBgColor = (): string => {
+  const getBgColor = () => {
     if (attributes.isKaspiDelivery) {
       if (cardStatus === "new") return "bg-red-50 border-red-200";
       if (cardStatus === "invoice") return "bg-yellow-50 border-yellow-200";
