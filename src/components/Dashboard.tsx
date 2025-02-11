@@ -26,34 +26,54 @@ interface AggregatedCounts {
 
 const aggregateCounts = (ordersData: any): AggregatedCounts => {
   const now = new Date();
+  // Определяем порог 13:01 текущего дня
   const cutoff = new Date(
     now.getFullYear(),
     now.getMonth(),
     now.getDate(),
     13,
-    0,
+    1,
     0,
     0
   );
   const cutoffTime = cutoff.getTime();
 
   let todayCount = 0;
-  let tomorrowCount = 0;
   let totalCount = 0;
 
+  // Проходим по всем магазинам
   ordersData.stores?.forEach((store: any) => {
     if (store.orders) {
-      const todayOrders = store.orders.filter(
-        (order: any) => order.attributes.creationDate < cutoffTime
-      );
-      const tomorrowOrders = store.orders.filter(
-        (order: any) => order.attributes.creationDate >= cutoffTime
-      );
-      todayCount += todayOrders.length;
-      tomorrowCount += tomorrowOrders.length;
-      totalCount += store.orders.length;
+      store.orders.forEach((order: any) => {
+        totalCount++;
+
+        // Получаем время создания заказа
+        // Если creationDate приходит в секундах, используйте:
+        // const orderTime = order.attributes.creationDate * 1000;
+        const orderTime = order.attributes.creationDate;
+
+        // Если заказ является KaspiDelivery, то нужно дополнительно проверять:
+        if (order.attributes.isKaspiDelivery) {
+          // Если заказ express — всегда в todayCount:
+          if (order.attributes.kaspiDelivery.express) {
+            todayCount++;
+          } else {
+            // Если не express, то включаем в todayCount только если создан до 13:01
+            if (orderTime < cutoffTime) {
+              todayCount++;
+            }
+          }
+        } else {
+          // Все остальные заказы попадают в todayCount независимо от времени
+          todayCount++;
+        }
+      });
     }
   });
+
+  // Если требуется, можно вычислить tomorrowCount как разницу между общим количеством и todayCount
+  const tomorrowCount = totalCount - todayCount;
+
   return { todayCount, tomorrowCount, totalCount };
 };
 
