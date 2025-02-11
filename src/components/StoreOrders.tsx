@@ -90,9 +90,11 @@ export const StoreOrders: React.FC<StoreOrdersProps> = ({
           />
         )}
       </StoreHeader>
-
-      <OrdersList orders={ordersToDisplay} storeName={store.storeName} />
-
+      <OrdersList
+        orders={ordersToDisplay}
+        storeName={store.storeName}
+        type={type}
+      />
       <DeleteConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}

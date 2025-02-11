@@ -9,6 +9,8 @@ import { useUpdateOrderStatusMutation } from "../redux/api";
 interface OrderCardProps {
   order: KaspiOrder;
   storeName: string;
+  /** Если true, значит заказ из вкладки "Возвращённые заказы" и плашка должна показывать информацию о возврате */
+  isReturnedOrder?: boolean;
 }
 
 // Кнопка для копирования текста
@@ -59,9 +61,9 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
-// Определяем начальный статус заказа
-// Даже если накладная уже сформирована, при поступлении заказа статус всегда "new" (красный)
-// Если заказ уже собран, возвращаем "assembled"
+// Определяем начальный статус заказа.
+// При поступлении заказа статус всегда "new" (карточка красная),
+// если заказ уже собран – "assembled".
 const getInitialStatus = (
   order: KaspiOrder
 ): "new" | "invoice" | "assembled" => {
@@ -70,7 +72,11 @@ const getInitialStatus = (
   return "new";
 };
 
-export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
+export const OrderCard: React.FC<OrderCardProps> = ({
+  order,
+  storeName,
+  isReturnedOrder = false,
+}) => {
   const { attributes, products } = order;
   const orderId = order.id;
 
@@ -82,20 +88,21 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
     order.attributes.kaspiDelivery?.waybill || null
   );
 
-  // При изменении order обновляем статус и ссылку
+  // При изменении заказа обновляем статус и ссылку
   useEffect(() => {
     setInvoiceLink(order.attributes.kaspiDelivery?.waybill || null);
     setCardStatus(getInitialStatus(order));
   }, [order]);
 
-  // Функция вычисления цвета карточки с учетом флага isKaspiDelivery и текущего статуса
+  // Функция вычисления цвета карточки:
+  // "new" – красный, "invoice" – жёлтый, "assembled" – зелёный.
+  // Логика для заказов без накладной (isKaspiDelivery === false) аналогична.
   const getBgColor = () => {
     if (attributes.isKaspiDelivery) {
       if (cardStatus === "new") return "bg-red-50 border-red-200";
       if (cardStatus === "invoice") return "bg-yellow-50 border-yellow-200";
       if (cardStatus === "assembled") return "bg-green-50 border-green-200";
     } else {
-      // Для заказов без накладной используем красный для "new" и зеленый для "assembled"
       if (cardStatus === "assembled") return "bg-green-50 border-green-200";
       return "bg-red-50 border-red-200";
     }
@@ -103,36 +110,64 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
 
   const bgColor = getBgColor();
 
-  // Определяем текст и стиль тега доставки
-  let deliveryTag = "";
-  let deliveryTagColor = "";
-  if (attributes.isKaspiDelivery) {
-    if (attributes.kaspiDelivery?.express === true) {
-      deliveryTag = "Express доставка";
-      deliveryTagColor = "bg-purple-100 text-purple-800";
+  // Функция отрисовки плашки.
+  // Если заказ возвращён (isReturnedOrder === true), то вместо стандартного типа доставки
+  // выводим плашку "Едет на склад" или "Возвращено на склад" в зависимости от returnedToWarehouse.
+  // Для остальных заказов отображаем стандартную плашку с типом доставки.
+  const renderBadge = () => {
+    if (isReturnedOrder && attributes.isKaspiDelivery) {
+      // Используем поле returnedToWarehouse из kaspiDelivery
+      const returned = attributes.kaspiDelivery.returnedToWarehouse;
+      return (
+        <span
+          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+            returned
+              ? "bg-green-100 text-green-800"
+              : "bg-orange-100 text-orange-800"
+          }`}
+        >
+          {returned ? "Возвращено на склад" : "Едет на склад"}
+        </span>
+      );
     } else {
-      deliveryTag = "Kaspi доставка";
-      deliveryTagColor = "bg-blue-100 text-blue-800";
+      // Стандартная плашка с типом доставки
+      let deliveryTag = "";
+      let deliveryTagColor = "";
+      if (attributes.isKaspiDelivery) {
+        if (attributes.kaspiDelivery?.express === true) {
+          deliveryTag = "Express доставка";
+          deliveryTagColor = "bg-purple-100 text-purple-800";
+        } else {
+          deliveryTag = "Kaspi доставка";
+          deliveryTagColor = "bg-blue-100 text-blue-800";
+        }
+      } else {
+        if (attributes.deliveryMode === "DELIVERY_PICKUP") {
+          deliveryTag = "Самовывоз";
+          deliveryTagColor = "bg-orange-100 text-orange-800";
+        } else if (attributes.deliveryMode === "DELIVERY_LOCAL") {
+          deliveryTag = "Своя доставка";
+          deliveryTagColor = "bg-green-100 text-green-800";
+        }
+      }
+      return (
+        <span
+          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${deliveryTagColor}`}
+        >
+          {deliveryTag}
+        </span>
+      );
     }
-  } else {
-    if (attributes.deliveryMode === "DELIVERY_PICKUP") {
-      deliveryTag = "Самовывоз";
-      deliveryTagColor = "bg-orange-100 text-orange-800";
-    } else if (attributes.deliveryMode === "DELIVERY_LOCAL") {
-      deliveryTag = "Своя доставка";
-      deliveryTagColor = "bg-green-100 text-green-800";
-    }
-  }
+  };
 
   const [updateOrderStatus, { isLoading: isUpdating }] =
     useUpdateOrderStatusMutation();
 
-  // Обработчик для получения накладной
+  // Обработчик для получения накладной (только для Kaspi Delivery)
   const handleGetWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       const response = await updateOrderStatus({ orderId, storeName }).unwrap();
-      // Если накладная сформирована, обновляем состояние на "invoice" (жёлтый)
       if (response.waybill) {
         setInvoiceLink(response.waybill);
         window.open(response.waybill, "_blank");
@@ -146,7 +181,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
     }
   };
 
-  // Обработчик для отметки, что заказ собран (переводим статус в "assembled", зеленый)
+  // Обработчик для отметки, что заказ собран – переводим статус в "assembled"
   const handleMarkAssembled = (e: React.MouseEvent) => {
     e.stopPropagation();
     setCardStatus("assembled");
@@ -159,13 +194,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, storeName }) => {
       className={`rounded-lg border p-4 ${bgColor} transition-colors duration-300`}
     >
       <div className="flex justify-between items-center">
-        {/* Тег доставки */}
-        <span
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${deliveryTagColor}`}
-        >
-          {deliveryTag}
-        </span>
-
+        {renderBadge()}
         {/* Кнопка получения накладной отображается только для Kaspi Delivery и не для предзаказов */}
         {attributes.isKaspiDelivery && !attributes.preOrder && (
           <div>
