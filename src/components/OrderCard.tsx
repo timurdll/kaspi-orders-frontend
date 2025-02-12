@@ -1,10 +1,14 @@
-// OrderCard.tsx
+// src/components/OrderCard.tsx
 import React, { useState, useEffect } from "react";
 import { KaspiOrder } from "../types/orders";
 import { formatDate } from "../utils/format";
 import { Copy, FileText } from "lucide-react";
 import { useCopyNotification } from "./GlobalCopyNotification";
-import { useUpdateOrderStatusMutation } from "../redux/api";
+import {
+  useCompleteOrderMutation,
+  useSendSecurityCodeMutation,
+  useUpdateOrderStatusMutation,
+} from "../redux/api";
 
 interface OrderCardProps {
   order: KaspiOrder;
@@ -80,30 +84,109 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const { attributes, products } = order;
   const orderId = order.id;
 
-  // Локальный стейт для статуса карточки и ссылки на накладную
-  const [cardStatus, setCardStatus] = useState<"new" | "invoice" | "assembled">(
-    getInitialStatus(order)
+  console.log(
+    order.attributes.code,
+    order.attributes.customer.firstName,
+    orderId
   );
+
+  // Состояния для статуса карточки, ссылки на накладную, кода подтверждения и управления отображением формы ввода кода
+  const [cardStatus, setCardStatus] = useState<
+    "new" | "invoice" | "assembled" | "code_sent" | "completed"
+  >(getInitialStatus(order));
   const [invoiceLink, setInvoiceLink] = useState<string | null>(
     order.attributes.kaspiDelivery?.waybill || null
   );
+  const [securityCode, setSecurityCode] = useState<string>("");
+  const [showCodeInput, setShowCodeInput] = useState<boolean>(false);
 
-  // При изменении заказа обновляем статус и ссылку
+  // Хуки для отправки кода и завершения заказа
+  const [sendSecurityCode] = useSendSecurityCodeMutation();
+  const [completeOrder] = useCompleteOrderMutation();
+  const [updateOrderStatus, { isLoading: isUpdating }] =
+    useUpdateOrderStatusMutation();
+
+  // При изменении заказа обновляем состояние
   useEffect(() => {
     setInvoiceLink(order.attributes.kaspiDelivery?.waybill || null);
     setCardStatus(getInitialStatus(order));
+    setShowCodeInput(false);
+    setSecurityCode("");
   }, [order]);
 
-  // Функция вычисления цвета карточки:
-  // "new" – красный, "invoice" – жёлтый, "assembled" – зелёный.
-  // Логика для заказов без накладной (isKaspiDelivery === false) аналогична.
+  // Обработчик отправки кода подтверждения
+  const handleSendCode = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await sendSecurityCode({
+        orderId,
+        storeName,
+        orderCode: attributes.code,
+      }).unwrap();
+      setCardStatus("code_sent");
+      setShowCodeInput(true);
+    } catch (error) {
+      console.error("Error sending security code:", error);
+      alert("Ошибка при отправке кода");
+    }
+  };
+
+  // Обработчик завершения заказа с вводом кода
+  const handleCompleteOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!securityCode) {
+      alert("Пожалуйста, введите код");
+      return;
+    }
+    try {
+      await completeOrder({
+        orderId,
+        storeName,
+        orderCode: attributes.code,
+        securityCode,
+      }).unwrap();
+      setCardStatus("completed");
+      setShowCodeInput(false);
+    } catch (error) {
+      console.error("Error completing order:", error);
+      alert("Ошибка при завершении заказа");
+    }
+  };
+
+  // Обработчик для получения накладной (только для Kaspi Delivery)
+  const handleGetWaybill = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await updateOrderStatus({ orderId, storeName }).unwrap();
+      if (response.waybill) {
+        setInvoiceLink(response.waybill);
+        window.open(response.waybill, "_blank");
+        setCardStatus("invoice");
+      } else {
+        console.log("Накладная еще не сформирована, повторите запрос позже.");
+      }
+    } catch (error: any) {
+      console.error("Ошибка получения накладной:", error);
+      alert("Ошибка при получении накладной");
+    }
+  };
+
+  // Обработчик для отметки, что заказ собран
+  const handleMarkAssembled = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCardStatus("assembled");
+  };
+
+  // Функция вычисления цвета карточки
   const getBgColor = () => {
     if (attributes.isKaspiDelivery) {
       if (cardStatus === "new") return "bg-red-50 border-red-200";
       if (cardStatus === "invoice") return "bg-yellow-50 border-yellow-200";
-      if (cardStatus === "assembled") return "bg-green-50 border-green-200";
+      if (cardStatus === "assembled" || cardStatus === "completed")
+        return "bg-green-50 border-green-200";
     } else {
-      if (cardStatus === "assembled") return "bg-green-50 border-green-200";
+      if (cardStatus === "assembled" || cardStatus === "completed")
+        return "bg-green-50 border-green-200";
       return "bg-red-50 border-red-200";
     }
   };
@@ -111,12 +194,11 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const bgColor = getBgColor();
 
   // Функция отрисовки плашки.
-  // Если заказ возвращён (isReturnedOrder === true), то вместо стандартного типа доставки
-  // выводим плашку "Едет на склад" или "Возвращено на склад" в зависимости от returnedToWarehouse.
-  // Для остальных заказов отображаем стандартную плашку с типом доставки.
+  // Если заказ возвращён (isReturnedOrder === true) и является Kaspi Delivery,
+  // то отображаем плашку в зависимости от поля returnedToWarehouse.
+  // Иначе – стандартная плашка с типом доставки.
   const renderBadge = () => {
     if (isReturnedOrder && attributes.isKaspiDelivery) {
-      // Используем поле returnedToWarehouse из kaspiDelivery
       const returned = attributes.kaspiDelivery.returnedToWarehouse;
       return (
         <span
@@ -130,7 +212,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         </span>
       );
     } else {
-      // Стандартная плашка с типом доставки
       let deliveryTag = "";
       let deliveryTagColor = "";
       if (attributes.isKaspiDelivery) {
@@ -160,31 +241,55 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  const [updateOrderStatus, { isLoading: isUpdating }] =
-    useUpdateOrderStatusMutation();
-
-  // Обработчик для получения накладной (только для Kaspi Delivery)
-  const handleGetWaybill = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const response = await updateOrderStatus({ orderId, storeName }).unwrap();
-      if (response.waybill) {
-        setInvoiceLink(response.waybill);
-        window.open(response.waybill, "_blank");
-        setCardStatus("invoice");
-      } else {
-        console.log("Накладная еще не сформирована, повторите запрос позже.");
+  // Функция отрисовки кнопок действий
+  const renderActionButton = () => {
+    // Для заказов с собственной доставкой (DELIVERY_LOCAL) реализуем ввод кода
+    if (attributes.deliveryMode === "DELIVERY_LOCAL") {
+      if (cardStatus === "new") {
+        return (
+          <button
+            onClick={handleSendCode}
+            className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Отправить код подтверждения
+          </button>
+        );
+      } else if (cardStatus === "code_sent" && showCodeInput) {
+        return (
+          <form onSubmit={handleCompleteOrder} className="w-full space-y-2">
+            <input
+              type="text"
+              value={securityCode}
+              onChange={(e) => setSecurityCode(e.target.value)}
+              placeholder="Введите код подтверждения"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+            <button
+              type="submit"
+              className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            >
+              Подтвердить доставку
+            </button>
+          </form>
+        );
       }
-    } catch (error: any) {
-      console.error("Ошибка получения накладной:", error);
-      alert("Ошибка при получении накладной");
     }
-  };
-
-  // Обработчик для отметки, что заказ собран – переводим статус в "assembled"
-  const handleMarkAssembled = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCardStatus("assembled");
+    // Для остальных заказов (не DELIVERY_LOCAL) если заказ не собран – кнопка "Отметить, что заказ собран"
+    if (
+      !attributes.preOrder &&
+      cardStatus !== "assembled" &&
+      cardStatus !== "completed"
+    ) {
+      return (
+        <button
+          onClick={handleMarkAssembled}
+          className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+        >
+          Отметить, что заказ собран
+        </button>
+      );
+    }
+    return null;
   };
 
   const clientFullName = `${attributes.customer.firstName} ${attributes.customer.lastName}`;
@@ -195,7 +300,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     >
       <div className="flex justify-between items-center">
         {renderBadge()}
-        {/* Кнопка получения накладной отображается только для Kaspi Delivery и не для предзаказов */}
         {attributes.isKaspiDelivery && !attributes.preOrder && (
           <div>
             {invoiceLink ? (
@@ -265,16 +369,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         </ul>
       </div>
 
-      <div className="mt-4">
-        {cardStatus !== "assembled" && (
-          <button
-            onClick={handleMarkAssembled}
-            className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-          >
-            Отметить, что заказ собран
-          </button>
-        )}
-      </div>
+      <div className="mt-4">{renderActionButton()}</div>
     </div>
   );
 };

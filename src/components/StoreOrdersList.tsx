@@ -1,9 +1,9 @@
-// src/components/StoreOrdersList.tsx
-import React from "react";
+import React, { useState } from "react";
 import { StoreOrders } from "./StoreOrders";
+import { StoreTabs } from "./StoreTabs";
 
 interface StoreOrdersListProps {
-  stores: any[]; // здесь можно типизировать по вашей модели
+  stores: any[];
   type: "current" | "archive" | "pre-orders" | "returned";
 }
 
@@ -11,11 +11,22 @@ export const StoreOrdersList: React.FC<StoreOrdersListProps> = ({
   stores,
   type,
 }) => {
+  const [activeStore, setActiveStore] = useState<string | null>(
+    stores.length > 0 ? stores[0].storeName : null
+  );
+
+  const activeStoreData = stores.find(
+    (store) => store.storeName === activeStore
+  );
+
   return (
-    <div className="space-y-6">
-      {stores.map((store: any) => (
-        <StoreOrders key={store.storeName} store={store} type={type} />
-      ))}
+    <div>
+      <StoreTabs
+        stores={stores}
+        activeStore={activeStore}
+        onStoreChange={setActiveStore}
+      />
+      {activeStoreData && <StoreOrders store={activeStoreData} type={type} />}
     </div>
   );
 };

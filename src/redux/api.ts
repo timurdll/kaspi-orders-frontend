@@ -1,10 +1,10 @@
-// api.ts
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { OrdersResponse } from "../types/orders";
 import { RootState } from "./store";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/";
 
+// Existing interfaces...
 interface Store {
   id: string;
   name: string;
@@ -16,15 +16,54 @@ interface CreateStoreDto {
   apiKey: string;
 }
 
-// Тип ответа обновления статуса (содержит waybill)
 interface UpdateOrderStatusResponse {
   waybill: string;
 }
 
-// Тип параметров для обновления статуса заказа
 interface UpdateOrderStatusDto {
   orderId: string;
   storeName: string;
+}
+
+// New interfaces for security code operations
+interface SendSecurityCodeDto {
+  orderId: string;
+  storeName: string;
+  orderCode: string;
+}
+
+interface CompleteOrderDto extends SendSecurityCodeDto {
+  securityCode: string;
+}
+
+interface CompleteOrderResponse {
+  data: {
+    type: string;
+    id: string;
+    attributes: {
+      code: string;
+      status: string;
+    };
+    relationships: {
+      user: {
+        links: {
+          self: string;
+          related: string;
+        };
+        data: null;
+      };
+      entries: {
+        links: {
+          self: string;
+          related: string;
+        };
+      };
+    };
+    links: {
+      self: string;
+    };
+  };
+  included: any[];
 }
 
 export const api = createApi({
@@ -41,6 +80,7 @@ export const api = createApi({
   }),
   tagTypes: ["Store"],
   endpoints: (builder) => ({
+    // Existing endpoints...
     login: builder.mutation<
       { access_token: string },
       { username: string; password: string }
@@ -63,7 +103,6 @@ export const api = createApi({
       query: () => "orders/pre-orders",
       providesTags: ["Store"],
     }),
-    // Новый endpoint для возвращённых заказов:
     getReturnedOrders: builder.query<OrdersResponse, void>({
       query: () => "orders/returned",
       providesTags: ["Store"],
@@ -106,6 +145,44 @@ export const api = createApi({
         }
       },
     }),
+
+    // New endpoints for security code operations
+    sendSecurityCode: builder.mutation<void, SendSecurityCodeDto>({
+      query: (payload) => ({
+        url: "orders/send-code",
+        method: "POST",
+        body: payload,
+      }),
+      invalidatesTags: ["Store"],
+      async onQueryStarted(arg, { queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          console.log(
+            "Security code sent successfully for order:",
+            arg.orderId
+          );
+        } catch (error) {
+          console.error("Error sending security code:", error);
+        }
+      },
+    }),
+
+    completeOrder: builder.mutation<CompleteOrderResponse, CompleteOrderDto>({
+      query: (payload) => ({
+        url: "orders/complete",
+        method: "POST",
+        body: payload,
+      }),
+      invalidatesTags: ["Store"],
+      async onQueryStarted(arg, { queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          console.log("Order completed successfully:", data.data.id, arg);
+        } catch (error) {
+          console.error("Error completing order:", error);
+        }
+      },
+    }),
   }),
 });
 
@@ -114,9 +191,12 @@ export const {
   useGetOrdersQuery,
   useGetArchiveOrdersQuery,
   useGetPreOrdersQuery,
-  useGetReturnedOrdersQuery, // новый хук
+  useGetReturnedOrdersQuery,
   useGetStoresQuery,
   useAddStoreMutation,
   useDeleteStoreMutation,
   useUpdateOrderStatusMutation,
+  // New hooks
+  useSendSecurityCodeMutation,
+  useCompleteOrderMutation,
 } = api;
