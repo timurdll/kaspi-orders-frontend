@@ -17,6 +17,7 @@ import { ErrorMessage } from "./ErrorMessage";
 import { AddStoreModal } from "./AddStoreModal";
 import { CopyNotificationProvider } from "./GlobalCopyNotification";
 import { BurgerMenuTabs } from "./BurgerMenuTabs";
+import { LoginPage } from "./LoginPage";
 
 interface AggregatedCounts {
   todayCount: number;
@@ -121,7 +122,6 @@ export const Dashboard: React.FC = () => {
     skip: !isAuthenticated,
   });
 
-  // Кэширование данных на случай ошибки
   const [cachedCurrentOrders, setCachedCurrentOrders] = useState<any>(null);
   useEffect(() => {
     if (currentOrders) setCachedCurrentOrders(currentOrders);
@@ -143,7 +143,7 @@ export const Dashboard: React.FC = () => {
   }, [returnedOrders]);
 
   if (!isAuthenticated) {
-    return <div>Пожалуйста, войдите в систему</div>;
+    return <LoginPage />;
   }
 
   let data, error, isLoading;
@@ -195,7 +195,6 @@ export const Dashboard: React.FC = () => {
           onAddStore={() => setIsAddStoreModalOpen(true)}
           onLogout={handleLogout}
         />
-        {/* На мобильных устройствах отображается бургер-меню с вкладками */}
         <div className="md:hidden mb-4">
           <BurgerMenuTabs
             activeTab={tab}
@@ -203,7 +202,6 @@ export const Dashboard: React.FC = () => {
             counts={counts}
           />
         </div>
-        {/* На десктопе можно оставить старые вкладки или скрыть бургер-меню */}
         <div className="hidden md:flex mb-6">
           <OrdersTypeTabs
             activeTab={tab}
