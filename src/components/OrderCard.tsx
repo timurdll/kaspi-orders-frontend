@@ -73,6 +73,7 @@ const getInitialStatus = (
 ): "new" | "invoice" | "assembled" => {
   const { attributes } = order;
   if (attributes.assembled) return "assembled";
+  if (attributes.kaspiDelivery?.waybill) return "invoice";
   return "new";
 };
 
@@ -179,6 +180,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
   // Функция вычисления цвета карточки
   const getBgColor = () => {
+    // Express orders should follow the same color logic as regular Kaspi Delivery
     if (attributes.isKaspiDelivery) {
       if (cardStatus === "new") return "bg-red-50 border-red-200";
       if (cardStatus === "invoice") return "bg-yellow-50 border-yellow-200";
@@ -189,8 +191,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         return "bg-green-50 border-green-200";
       return "bg-red-50 border-red-200";
     }
+    return "bg-red-50 border-red-200"; // default fallback
   };
-
   const bgColor = getBgColor();
 
   // Функция отрисовки плашки.
@@ -243,7 +245,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
   // Функция отрисовки кнопок действий
   const renderActionButton = () => {
-    // Для заказов с собственной доставкой (DELIVERY_LOCAL) реализуем ввод кода
+    // Only show "Send Code" button for DELIVERY_LOCAL orders
     if (attributes.deliveryMode === "DELIVERY_LOCAL") {
       if (cardStatus === "new") {
         return (
@@ -274,11 +276,13 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         );
       }
     }
-    // Для остальных заказов (не DELIVERY_LOCAL) если заказ не собран – кнопка "Отметить, что заказ собран"
+
+    // Show "Mark as Assembled" button for non-assembled orders, regardless of delivery type
     if (
       !attributes.preOrder &&
       cardStatus !== "assembled" &&
-      cardStatus !== "completed"
+      cardStatus !== "completed" &&
+      attributes.deliveryMode !== "DELIVERY_LOCAL" // Add this condition
     ) {
       return (
         <button
