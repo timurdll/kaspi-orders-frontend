@@ -85,15 +85,9 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const { attributes, products } = order;
   const orderId = order.id;
 
-  console.log(
-    order.attributes.code,
-    order.attributes.customer.firstName,
-    orderId
-  );
-
-  // Состояния для статуса карточки, ссылки на накладную, кода подтверждения и управления отображением формы ввода кода
+  // Обновлённый тип состояния с добавлением "transferred" для экспресс-заказов
   const [cardStatus, setCardStatus] = useState<
-    "new" | "invoice" | "assembled" | "code_sent" | "completed"
+    "new" | "invoice" | "assembled" | "code_sent" | "completed" | "transferred"
   >(getInitialStatus(order));
   const [invoiceLink, setInvoiceLink] = useState<string | null>(
     order.attributes.kaspiDelivery?.waybill || null
@@ -178,12 +172,24 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     setCardStatus("assembled");
   };
 
+  // Новый обработчик для экспресс-заказа: отправка на передачу
+  const handleSendForTransfer = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await updateOrderStatus({ orderId, storeName }).unwrap();
+      setCardStatus("transferred");
+    } catch (error) {
+      console.error("Ошибка при отправке на передачу:", error);
+      alert("Ошибка при обновлении статуса заказа");
+    }
+  };
+
   // Функция вычисления цвета карточки
   const getBgColor = () => {
-    // Express orders should follow the same color logic as regular Kaspi Delivery
     if (attributes.isKaspiDelivery) {
       if (cardStatus === "new") return "bg-red-50 border-red-200";
       if (cardStatus === "invoice") return "bg-yellow-50 border-yellow-200";
+      if (cardStatus === "transferred") return "bg-indigo-50 border-indigo-200";
       if (cardStatus === "assembled" || cardStatus === "completed")
         return "bg-green-50 border-green-200";
     } else {
@@ -245,7 +251,23 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
   // Функция отрисовки кнопок действий
   const renderActionButton = () => {
-    // Only show "Send Code" button for DELIVERY_LOCAL orders
+    // Если заказ экспресс – отображаем кнопку "Отправить на передачу"
+    if (
+      attributes.isKaspiDelivery &&
+      attributes.kaspiDelivery?.express &&
+      cardStatus === "invoice"
+    ) {
+      return (
+        <button
+          onClick={handleSendForTransfer}
+          className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          Отправить на передачу
+        </button>
+      );
+    }
+
+    // Отображаем кнопку "Отправить код подтверждения" для DELIVERY_LOCAL заказов
     if (attributes.deliveryMode === "DELIVERY_LOCAL") {
       if (cardStatus === "new") {
         return (
@@ -277,12 +299,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       }
     }
 
-    // Show "Mark as Assembled" button for non-assembled orders, regardless of delivery type
+    // Для остальных заказов (не DELIVERY_LOCAL) отображаем кнопку "Отметить, что заказ собран"
     if (
       !attributes.preOrder &&
       cardStatus !== "assembled" &&
       cardStatus !== "completed" &&
-      attributes.deliveryMode !== "DELIVERY_LOCAL" // Add this condition
+      attributes.deliveryMode !== "DELIVERY_LOCAL"
     ) {
       return (
         <button
