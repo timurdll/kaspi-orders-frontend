@@ -116,3 +116,11 @@ export interface OrdersResponse {
     ordersByStatus: Record<string, number>;
   };
 }
+
+export type OrderStatus =
+  | "new"
+  | "invoice"
+  | "assembled"
+  | "code_sent"
+  | "completed"
+  | "transferred";

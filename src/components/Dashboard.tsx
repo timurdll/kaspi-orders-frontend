@@ -13,10 +13,8 @@ import { Header } from "./Header";
 import { OrdersTypeTabs, TabType } from "./OrdersTypeTabs";
 import { StoreOrdersList } from "./StoreOrdersList";
 import { Loader } from "./Loader";
-import { ErrorMessage } from "./ErrorMessage";
 import { AddStoreModal } from "./AddStoreModal";
 import { CopyNotificationProvider } from "./GlobalCopyNotification";
-import { BurgerMenuTabs } from "./BurgerMenuTabs";
 import { LoginPage } from "./LoginPage";
 
 interface AggregatedCounts {
@@ -27,7 +25,6 @@ interface AggregatedCounts {
 
 const aggregateCounts = (ordersData: any): AggregatedCounts => {
   const now = new Date();
-  // Определяем порог 13:01 текущего дня
   const cutoff = new Date(
     now.getFullYear(),
     now.getMonth(),
@@ -42,39 +39,27 @@ const aggregateCounts = (ordersData: any): AggregatedCounts => {
   let todayCount = 0;
   let totalCount = 0;
 
-  // Проходим по всем магазинам
   ordersData.stores?.forEach((store: any) => {
     if (store.orders) {
       store.orders.forEach((order: any) => {
         totalCount++;
-
-        // Получаем время создания заказа
-        // Если creationDate приходит в секундах, используйте:
-        // const orderTime = order.attributes.creationDate * 1000;
         const orderTime = order.attributes.creationDate;
-
-        // Если заказ является KaspiDelivery, то нужно дополнительно проверять:
         if (order.attributes.isKaspiDelivery) {
-          // Если заказ express — всегда в todayCount:
           if (order.attributes.kaspiDelivery.express) {
             todayCount++;
           } else {
-            // Если не express, то включаем в todayCount только если создан до 13:01
             if (orderTime < cutoffTime) {
               todayCount++;
             }
           }
         } else {
-          // Все остальные заказы попадают в todayCount независимо от времени
           todayCount++;
         }
       });
     }
   });
 
-  // Если требуется, можно вычислить tomorrowCount как разницу между общим количеством и todayCount
   const tomorrowCount = totalCount - todayCount;
-
   return { todayCount, tomorrowCount, totalCount };
 };
 
@@ -86,41 +71,33 @@ export const Dashboard: React.FC = () => {
     (state: RootState) => state.auth.isAuthenticated
   );
 
-  const {
-    data: currentOrders,
-    error: currentError,
-    isLoading: currentLoading,
-  } = useGetOrdersQuery(undefined, {
-    pollingInterval: 60000,
-    skip: !isAuthenticated,
-  });
+  const { data: currentOrders, isLoading: currentLoading } = useGetOrdersQuery(
+    undefined,
+    {
+      pollingInterval: 60000,
+      skip: !isAuthenticated,
+    }
+  );
 
-  const {
-    data: archiveOrders,
-    error: archiveError,
-    isLoading: archiveLoading,
-  } = useGetArchiveOrdersQuery(undefined, {
-    pollingInterval: 60000,
-    skip: !isAuthenticated,
-  });
+  const { data: archiveOrders, isLoading: archiveLoading } =
+    useGetArchiveOrdersQuery(undefined, {
+      pollingInterval: 60000,
+      skip: !isAuthenticated,
+    });
 
-  const {
-    data: preOrders,
-    error: preOrdersError,
-    isLoading: preOrdersLoading,
-  } = useGetPreOrdersQuery(undefined, {
-    pollingInterval: 60000,
-    skip: !isAuthenticated,
-  });
+  const { data: preOrders, isLoading: preOrdersLoading } = useGetPreOrdersQuery(
+    undefined,
+    {
+      pollingInterval: 60000,
+      skip: !isAuthenticated,
+    }
+  );
 
-  const {
-    data: returnedOrders,
-    error: returnedError,
-    isLoading: returnedLoading,
-  } = useGetReturnedOrdersQuery(undefined, {
-    pollingInterval: 60000,
-    skip: !isAuthenticated,
-  });
+  const { data: returnedOrders, isLoading: returnedLoading } =
+    useGetReturnedOrdersQuery(undefined, {
+      pollingInterval: 60000,
+      skip: !isAuthenticated,
+    });
 
   const [cachedCurrentOrders, setCachedCurrentOrders] = useState<any>(null);
   useEffect(() => {
@@ -146,29 +123,24 @@ export const Dashboard: React.FC = () => {
     return <LoginPage />;
   }
 
-  let data, error, isLoading;
+  console.log(currentOrders);
+
+  let data, isLoading;
   if (tab === "current") {
     data = currentOrders || cachedCurrentOrders;
-    error = currentError;
     isLoading = currentLoading;
   } else if (tab === "archive") {
     data = archiveOrders || cachedArchiveOrders;
-    error = archiveError;
     isLoading = archiveLoading;
   } else if (tab === "pre-orders") {
     data = preOrders || cachedPreOrders;
-    error = preOrdersError;
     isLoading = preOrdersLoading;
   } else if (tab === "returned") {
     data = returnedOrders || cachedReturnedOrders;
-    error = returnedError;
     isLoading = returnedLoading;
   }
 
   if (isLoading && !data) return <Loader />;
-  if (error && !data)
-    return <ErrorMessage message="Не удалось загрузить данные о заказах" />;
-  if (!data) return null;
 
   const currentCounts = currentOrders ? aggregateCounts(currentOrders) : null;
   const archiveCounts = archiveOrders ? aggregateCounts(archiveOrders) : null;
@@ -191,17 +163,15 @@ export const Dashboard: React.FC = () => {
   return (
     <CopyNotificationProvider>
       <div className="container mx-auto px-4 py-8">
+        {/* Header включает бургер-меню (которая теперь отображается всегда) */}
         <Header
           onAddStore={() => setIsAddStoreModalOpen(true)}
           onLogout={handleLogout}
+          activeTab={tab}
+          onTabChange={setTab}
+          counts={counts}
         />
-        <div className="md:hidden mb-4">
-          <BurgerMenuTabs
-            activeTab={tab}
-            onTabChange={setTab}
-            counts={counts}
-          />
-        </div>
+        {/* Десктопное представление – вкладки */}
         <div className="hidden md:flex mb-6">
           <OrdersTypeTabs
             activeTab={tab}

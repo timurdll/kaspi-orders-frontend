@@ -29,14 +29,13 @@ export const OrdersTypeTabs: React.FC<OrdersTabsProps> = ({
         }`}
         onClick={() => onTabChange("current")}
       >
-        Текущие заказы
+        Заказы
         {counts.current && (
           <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
             {counts.current.todayCount}
           </span>
         )}
       </button>
-
       <button
         className={`relative px-4 py-2 rounded-md ${
           activeTab === "pre-orders" ? "bg-blue-500 text-white" : "bg-gray-200"
@@ -51,7 +50,7 @@ export const OrdersTypeTabs: React.FC<OrdersTabsProps> = ({
         )}
       </button>
 
-      <button
+      {/* <button
         className={`relative px-4 py-2 rounded-md ${
           activeTab === "archive" ? "bg-blue-500 text-white" : "bg-gray-200"
         }`}
@@ -63,7 +62,7 @@ export const OrdersTypeTabs: React.FC<OrdersTabsProps> = ({
             {counts.archive.totalCount}
           </span>
         )}
-      </button>
+      </button> */}
 
       <button
         className={`relative px-4 py-2 rounded-md ${
@@ -71,7 +70,7 @@ export const OrdersTypeTabs: React.FC<OrdersTabsProps> = ({
         }`}
         onClick={() => onTabChange("returned")}
       >
-        Возвращённые заказы
+        Возвраты
         {counts.returned && (
           <span className="absolute -top-2 -right-2 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full">
             {counts.returned.totalCount}

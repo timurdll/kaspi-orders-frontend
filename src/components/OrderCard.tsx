@@ -1,73 +1,23 @@
 // src/components/OrderCard.tsx
 import React, { useState, useEffect } from "react";
 import { KaspiOrder } from "../types/orders";
-import { formatDate } from "../utils/format";
-import { Copy, FileText } from "lucide-react";
-import { useCopyNotification } from "./GlobalCopyNotification";
 import {
   useCompleteOrderMutation,
   useSendSecurityCodeMutation,
   useUpdateOrderStatusMutation,
 } from "../redux/api";
+import { OrderBadge } from "./UI/DeliveryBadge";
+import { OrderHeader } from "./UI/OrderHeader";
+import { OrderDetails } from "./UI/OrderDetails";
+import { OrderActions } from "./UI/OrderActions";
+import { FileText } from "lucide-react";
 
 interface OrderCardProps {
   order: KaspiOrder;
   storeName: string;
-  /** Если true, значит заказ из вкладки "Возвращённые заказы" и плашка должна показывать информацию о возврате */
   isReturnedOrder?: boolean;
 }
 
-// Кнопка для копирования текста
-const CopyButton: React.FC<{ text: string }> = ({ text }) => {
-  const showNotification = useCopyNotification();
-
-  const handleClick = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-        showNotification("Скопировано!");
-      } catch (err) {
-        console.error("Ошибка копирования через Clipboard API:", err);
-      }
-    } else {
-      try {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed";
-        textArea.style.top = "0";
-        textArea.style.left = "0";
-        textArea.style.opacity = "0";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        const successful = document.execCommand("copy");
-        if (successful) {
-          showNotification("Скопировано!");
-        } else {
-          console.error("Fallback копирование не удалось");
-        }
-        document.body.removeChild(textArea);
-      } catch (err) {
-        console.error("Ошибка копирования (fallback):", err);
-      }
-    }
-  };
-
-  return (
-    <button
-      onClick={handleClick}
-      className="ml-1 inline-flex items-center text-gray-500 hover:text-gray-700"
-      title="Скопировать"
-    >
-      <Copy size={16} />
-    </button>
-  );
-};
-
-// Определяем начальный статус заказа.
-// При поступлении заказа статус всегда "new" (карточка красная),
-// если заказ уже собран – "assembled".
 const getInitialStatus = (
   order: KaspiOrder
 ): "new" | "invoice" | "assembled" => {
@@ -84,32 +34,27 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 }) => {
   const { attributes, products } = order;
   const orderId = order.id;
-
-  // Обновлённый тип состояния с добавлением "transferred" для экспресс-заказов
   const [cardStatus, setCardStatus] = useState<
     "new" | "invoice" | "assembled" | "code_sent" | "completed" | "transferred"
   >(getInitialStatus(order));
   const [invoiceLink, setInvoiceLink] = useState<string | null>(
-    order.attributes.kaspiDelivery?.waybill || null
+    attributes.kaspiDelivery?.waybill || null
   );
   const [securityCode, setSecurityCode] = useState<string>("");
   const [showCodeInput, setShowCodeInput] = useState<boolean>(false);
 
-  // Хуки для отправки кода и завершения заказа
   const [sendSecurityCode] = useSendSecurityCodeMutation();
   const [completeOrder] = useCompleteOrderMutation();
   const [updateOrderStatus, { isLoading: isUpdating }] =
     useUpdateOrderStatusMutation();
 
-  // При изменении заказа обновляем состояние
   useEffect(() => {
-    setInvoiceLink(order.attributes.kaspiDelivery?.waybill || null);
+    setInvoiceLink(attributes.kaspiDelivery?.waybill || null);
     setCardStatus(getInitialStatus(order));
     setShowCodeInput(false);
     setSecurityCode("");
-  }, [order]);
+  }, [order, attributes.kaspiDelivery]);
 
-  // Обработчик отправки кода подтверждения
   const handleSendCode = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -126,7 +71,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  // Обработчик завершения заказа с вводом кода
   const handleCompleteOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!securityCode) {
@@ -148,7 +92,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  // Обработчик для получения накладной (только для Kaspi Delivery)
   const handleGetWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -166,13 +109,11 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  // Обработчик для отметки, что заказ собран
   const handleMarkAssembled = (e: React.MouseEvent) => {
     e.stopPropagation();
     setCardStatus("assembled");
   };
 
-  // Новый обработчик для экспресс-заказа: отправка на передачу
   const handleSendForTransfer = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -184,7 +125,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  // Функция вычисления цвета карточки
+  // Пример вычисления цвета фона карточки
   const getBgColor = () => {
     if (attributes.isKaspiDelivery) {
       if (cardStatus === "new") return "bg-red-50 border-red-200";
@@ -197,205 +138,69 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         return "bg-green-50 border-green-200";
       return "bg-red-50 border-red-200";
     }
-    return "bg-red-50 border-red-200"; // default fallback
+    return "bg-red-50 border-red-200";
   };
   const bgColor = getBgColor();
-
-  // Функция отрисовки плашки.
-  // Если заказ возвращён (isReturnedOrder === true) и является Kaspi Delivery,
-  // то отображаем плашку в зависимости от поля returnedToWarehouse.
-  // Иначе – стандартная плашка с типом доставки.
-  const renderBadge = () => {
-    if (isReturnedOrder && attributes.isKaspiDelivery) {
-      const returned = attributes.kaspiDelivery.returnedToWarehouse;
-      return (
-        <span
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-            returned
-              ? "bg-green-100 text-green-800"
-              : "bg-orange-100 text-orange-800"
-          }`}
-        >
-          {returned ? "Возвращено на склад" : "Едет на склад"}
-        </span>
-      );
-    } else {
-      let deliveryTag = "";
-      let deliveryTagColor = "";
-      if (attributes.isKaspiDelivery) {
-        if (attributes.kaspiDelivery?.express === true) {
-          deliveryTag = "Express доставка";
-          deliveryTagColor = "bg-purple-100 text-purple-800";
-        } else {
-          deliveryTag = "Kaspi доставка";
-          deliveryTagColor = "bg-blue-100 text-blue-800";
-        }
-      } else {
-        if (attributes.deliveryMode === "DELIVERY_PICKUP") {
-          deliveryTag = "Самовывоз";
-          deliveryTagColor = "bg-orange-100 text-orange-800";
-        } else if (attributes.deliveryMode === "DELIVERY_LOCAL") {
-          deliveryTag = "Своя доставка";
-          deliveryTagColor = "bg-green-100 text-green-800";
-        }
-      }
-      return (
-        <span
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${deliveryTagColor}`}
-        >
-          {deliveryTag}
-        </span>
-      );
-    }
-  };
-
-  // Функция отрисовки кнопок действий
-  const renderActionButton = () => {
-    // Если заказ экспресс – отображаем кнопку "Отправить на передачу"
-    if (
-      attributes.isKaspiDelivery &&
-      attributes.kaspiDelivery?.express &&
-      cardStatus === "invoice"
-    ) {
-      return (
-        <button
-          onClick={handleSendForTransfer}
-          className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          Отправить на передачу
-        </button>
-      );
-    }
-
-    // Отображаем кнопку "Отправить код подтверждения" для DELIVERY_LOCAL заказов
-    if (attributes.deliveryMode === "DELIVERY_LOCAL") {
-      if (cardStatus === "new") {
-        return (
-          <button
-            onClick={handleSendCode}
-            className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Отправить код подтверждения
-          </button>
-        );
-      } else if (cardStatus === "code_sent" && showCodeInput) {
-        return (
-          <form onSubmit={handleCompleteOrder} className="w-full space-y-2">
-            <input
-              type="text"
-              value={securityCode}
-              onChange={(e) => setSecurityCode(e.target.value)}
-              placeholder="Введите код подтверждения"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-            <button
-              type="submit"
-              className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              Подтвердить доставку
-            </button>
-          </form>
-        );
-      }
-    }
-
-    // Для остальных заказов (не DELIVERY_LOCAL) отображаем кнопку "Отметить, что заказ собран"
-    if (
-      !attributes.preOrder &&
-      cardStatus !== "assembled" &&
-      cardStatus !== "completed" &&
-      attributes.deliveryMode !== "DELIVERY_LOCAL"
-    ) {
-      return (
-        <button
-          onClick={handleMarkAssembled}
-          className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-        >
-          Отметить, что заказ собран
-        </button>
-      );
-    }
-    return null;
-  };
-
-  const clientFullName = `${attributes.customer.firstName} ${attributes.customer.lastName}`;
 
   return (
     <div
       className={`rounded-lg border p-4 ${bgColor} transition-colors duration-300`}
     >
-      <div className="flex justify-between items-center">
-        {renderBadge()}
-        {attributes.isKaspiDelivery && !attributes.preOrder && (
-          <div>
-            {invoiceLink ? (
-              <a
-                href={invoiceLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
-              >
+      <div className="flex justify-between items-center mb-2">
+        <OrderBadge
+          isReturnedOrder={isReturnedOrder}
+          isKaspiDelivery={attributes.isKaspiDelivery}
+          kaspiDelivery={attributes.kaspiDelivery}
+          deliveryMode={attributes.deliveryMode}
+        />
+        {attributes.isKaspiDelivery &&
+          !attributes.preOrder &&
+          (invoiceLink ? (
+            <a
+              href={invoiceLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 transition-colors duration-200"
+            >
+              <FileText size={16} />
+            </a>
+          ) : (
+            <button
+              onClick={handleGetWaybill}
+              disabled={isUpdating}
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
+            >
+              {isUpdating ? (
+                <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
+              ) : (
                 <FileText size={16} />
-              </a>
-            ) : (
-              <button
-                onClick={handleGetWaybill}
-                disabled={isUpdating}
-                className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 disabled:opacity-50"
-              >
-                {isUpdating ? (
-                  <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
-                ) : (
-                  <FileText size={16} />
-                )}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="mb-2">
-        <h4 className="text-base font-semibold inline-flex items-center">
-          {attributes.code}
-          <CopyButton text={attributes.code} />
-        </h4>
-        <p className="text-xs text-gray-700">
-          {formatDate(attributes.creationDate)}
-        </p>
-      </div>
-
-      <div className="mb-2 space-y-1">
-        <p className="text-sm text-gray-600">
-          {clientFullName}
-          <CopyButton text={clientFullName} />
-        </p>
-        <p className="text-sm text-gray-600">
-          {attributes.customer.cellPhone}
-          <CopyButton text={attributes.customer.cellPhone} />
-        </p>
-        {attributes.deliveryAddress?.formattedAddress && (
-          <p className="text-sm text-gray-600">
-            {attributes.deliveryAddress.formattedAddress}
-            <CopyButton text={attributes.deliveryAddress.formattedAddress} />
-          </p>
-        )}
-      </div>
-
-      <div className="mt-2">
-        <ul className="list-disc list-inside text-sm">
-          {products.map((product, index) => (
-            <li key={index} className="flex items-center">
-              <span>
-                {product.name} (x{product.quantity})
-              </span>
-              <CopyButton text={`${product.name} (x${product.quantity})`} />
-            </li>
+              )}
+            </button>
           ))}
-        </ul>
       </div>
-
-      <div className="mt-4">{renderActionButton()}</div>
+      <OrderHeader
+        code={attributes.code}
+        creationDate={attributes.creationDate}
+      />
+      <OrderDetails
+        customer={attributes.customer}
+        deliveryAddress={attributes.deliveryAddress}
+        products={products}
+      />
+      <div className="mt-4">
+        <OrderActions
+          attributes={attributes}
+          cardStatus={cardStatus}
+          showCodeInput={showCodeInput}
+          securityCode={securityCode}
+          onSendCode={handleSendCode}
+          onCompleteOrder={handleCompleteOrder}
+          onMarkAssembled={handleMarkAssembled}
+          onSendForTransfer={handleSendForTransfer}
+          onSecurityCodeChange={setSecurityCode}
+        />
+      </div>
     </div>
   );
 };

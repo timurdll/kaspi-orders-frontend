@@ -1,7 +1,6 @@
-// src/components/BurgerMenuTabs.tsx
 import React, { useState } from "react";
-import { Menu, X } from "lucide-react"; // используем иконки бургер-меню
-// Определяем тип вкладок
+import { Menu, X } from "lucide-react";
+
 export type TabType = "current" | "archive" | "pre-orders" | "returned";
 
 interface BurgerMenuTabsProps {
@@ -13,12 +12,16 @@ interface BurgerMenuTabsProps {
     preOrders?: { totalCount: number } | null;
     returned?: { totalCount: number } | null;
   };
+  onAddStore: () => void;
+  onLogout: () => void;
 }
 
 export const BurgerMenuTabs: React.FC<BurgerMenuTabsProps> = ({
   activeTab,
   onTabChange,
   counts,
+  onAddStore,
+  onLogout,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -28,77 +31,68 @@ export const BurgerMenuTabs: React.FC<BurgerMenuTabsProps> = ({
   };
 
   return (
-    <div className="relative md:hidden">
+    <div className="relative">
       {/* Кнопка бургер-меню */}
       <button
         onClick={() => setMenuOpen(!menuOpen)}
-        className="p-2 focus:outline-none"
+        className="p-2 rounded-full hover:bg-gray-200 transition-colors focus:outline-none"
       >
         {menuOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
-      {/* Меню, которое открывается под кнопкой */}
+
       {menuOpen && (
-        <div className="absolute top-full left-0 w-full bg-white shadow-md z-50">
-          <button
-            className={`block w-full text-left px-4 py-2 ${
-              activeTab === "current"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200 text-gray-800"
-            }`}
-            onClick={() => handleTabClick("current")}
-          >
-            Текущие заказы{" "}
-            {counts.current && (
-              <span className="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                {counts.current.todayCount}
-              </span>
-            )}
-          </button>
-          <button
-            className={`block w-full text-left px-4 py-2 ${
-              activeTab === "pre-orders"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200 text-gray-800"
-            }`}
-            onClick={() => handleTabClick("pre-orders")}
-          >
-            Предзаказы{" "}
-            {counts.preOrders && (
-              <span className="ml-2 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                {counts.preOrders.totalCount}
-              </span>
-            )}
-          </button>
-          <button
-            className={`block w-full text-left px-4 py-2 ${
-              activeTab === "archive"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200 text-gray-800"
-            }`}
-            onClick={() => handleTabClick("archive")}
-          >
-            Архивные заказы{" "}
-            {counts.archive && (
-              <span className="ml-2 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                {counts.archive.totalCount}
-              </span>
-            )}
-          </button>
-          <button
-            className={`block w-full text-left px-4 py-2 ${
-              activeTab === "returned"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200 text-gray-800"
-            }`}
-            onClick={() => handleTabClick("returned")}
-          >
-            Возвращённые заказы{" "}
-            {counts.returned && (
-              <span className="ml-2 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                {counts.returned.totalCount}
-              </span>
-            )}
-          </button>
+        <div className="absolute top-14 w-64 bg-white shadow-lg rounded-lg overflow-hidden z-50 right-0">
+          <nav className="flex flex-col divide-y divide-gray-200">
+            {[
+              "current",
+              "pre-orders",
+              "archiveabsoluteabsolute",
+              "returned",
+            ].map((tab) => (
+              <button
+                key={tab}
+                className={`px-4 py-3 text-left transition-all font-medium text-sm flex justify-between items-center ${
+                  activeTab === tab
+                    ? "bg-blue-500 text-white"
+                    : "hover:bg-gray-100 text-gray-800"
+                }`}
+                onClick={() => handleTabClick(tab as TabType)}
+              >
+                {tab === "current" && "Текущие заказы"}
+                {tab === "pre-orders" && "Предзаказы"}
+                {tab === "archive" && "Архивные заказы"}
+                {tab === "returned" && "Возвращённые заказы"}
+                {counts[tab as keyof typeof counts] && (
+                  <span className="ml-2 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                    {counts[tab as keyof typeof counts]?.totalCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          <div className="border-t border-gray-300 my-2" />
+
+          <div className="p-4 flex flex-col gap-2">
+            <button
+              onClick={() => {
+                onAddStore();
+                setMenuOpen(false);
+              }}
+              className="w-full py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition"
+            >
+              Добавить магазин
+            </button>
+            <button
+              onClick={() => {
+                onLogout();
+                setMenuOpen(false);
+              }}
+              className="w-full py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
+            >
+              Выйти
+            </button>
+          </div>
         </div>
       )}
     </div>

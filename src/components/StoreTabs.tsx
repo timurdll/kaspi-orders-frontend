@@ -13,7 +13,7 @@ export const StoreTabs: React.FC<StoreTabsProps> = ({
 }) => {
   return (
     <div className="flex space-x-2 overflow-x-auto pb-2 mb-4">
-      {stores.map((store) => (
+      {stores?.map((store) => (
         <button
           key={store.storeName}
           onClick={() => onStoreChange(store.storeName)}
