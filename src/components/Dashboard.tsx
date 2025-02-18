@@ -123,8 +123,6 @@ export const Dashboard: React.FC = () => {
     return <LoginPage />;
   }
 
-  console.log(currentOrders);
-
   let data, isLoading;
   if (tab === "current") {
     data = currentOrders || cachedCurrentOrders;
