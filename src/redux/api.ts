@@ -4,7 +4,7 @@ import { RootState } from "./store";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/";
 
-// Existing interfaces...
+// Существующие интерфейсы...
 interface Store {
   id: string;
   name: string;
@@ -25,7 +25,7 @@ interface UpdateOrderStatusDto {
   storeName: string;
 }
 
-// New interfaces for security code operations
+// Новые интерфейсы для операций с кодом
 interface SendSecurityCodeDto {
   orderId: string;
   storeName: string;
@@ -80,7 +80,7 @@ export const api = createApi({
   }),
   tagTypes: ["Store"],
   endpoints: (builder) => ({
-    // Existing endpoints...
+    // Существующие endpoints...
     login: builder.mutation<
       { access_token: string },
       { username: string; password: string }
@@ -146,7 +146,7 @@ export const api = createApi({
       },
     }),
 
-    // New endpoints for security code operations
+    // Эндпоинты для операций с кодом
     sendSecurityCode: builder.mutation<void, SendSecurityCodeDto>({
       query: (payload) => ({
         url: "orders/send-code",
@@ -183,6 +183,25 @@ export const api = createApi({
         }
       },
     }),
+
+    // Новый endpoint для формирования накладной
+    generateWaybill: builder.query<Blob, string>({
+      query: (orderId: string) => ({
+        url: `orders/waybill/${orderId}`,
+        method: "GET",
+        // @ts-ignore: responseHandler используется для получения Blob
+        responseHandler: (response: Response) => response.blob(),
+      }),
+      transformResponse: (blob: Blob) => blob,
+      async onQueryStarted(orderId, { queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          console.log("Waybill generated for order:", orderId);
+        } catch (error) {
+          console.error("Error generating waybill:", error);
+        }
+      },
+    }),
   }),
 });
 
@@ -196,7 +215,7 @@ export const {
   useAddStoreMutation,
   useDeleteStoreMutation,
   useUpdateOrderStatusMutation,
-  // New hooks
   useSendSecurityCodeMutation,
   useCompleteOrderMutation,
+  useLazyGenerateWaybillQuery, // ленивый query для формирования накладной
 } = api;

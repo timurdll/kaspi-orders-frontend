@@ -50,7 +50,7 @@ export const OrdersTypeTabs: React.FC<OrdersTabsProps> = ({
         )}
       </button>
 
-      {/* <button
+      <button
         className={`relative px-4 py-2 rounded-md ${
           activeTab === "archive" ? "bg-blue-500 text-white" : "bg-gray-200"
         }`}
@@ -62,7 +62,7 @@ export const OrdersTypeTabs: React.FC<OrdersTabsProps> = ({
             {counts.archive.totalCount}
           </span>
         )}
-      </button> */}
+      </button>
 
       <button
         className={`relative px-4 py-2 rounded-md ${

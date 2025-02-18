@@ -1,10 +1,10 @@
-// src/components/OrderCard.tsx
 import React, { useState, useEffect } from "react";
 import { KaspiOrder } from "../types/orders";
 import {
   useCompleteOrderMutation,
   useSendSecurityCodeMutation,
   useUpdateOrderStatusMutation,
+  useLazyGenerateWaybillQuery,
 } from "../redux/api";
 import { OrderBadge } from "./UI/DeliveryBadge";
 import { OrderHeader } from "./UI/OrderHeader";
@@ -47,6 +47,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const [completeOrder] = useCompleteOrderMutation();
   const [updateOrderStatus, { isLoading: isUpdating }] =
     useUpdateOrderStatusMutation();
+  const [triggerGenerateWaybill, { isFetching: isGenerating }] =
+    useLazyGenerateWaybillQuery();
 
   useEffect(() => {
     setInvoiceLink(attributes.kaspiDelivery?.waybill || null);
@@ -109,6 +111,20 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
+  const handleGenerateWaybill = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const blob = await triggerGenerateWaybill(orderId).unwrap();
+      const blobUrl = window.URL.createObjectURL(blob);
+      setInvoiceLink(blobUrl);
+      window.open(blobUrl, "_blank");
+      setCardStatus("invoice");
+    } catch (error) {
+      console.error("Ошибка формирования накладной:", error);
+      alert("Ошибка формирования накладной");
+    }
+  };
+
   const handleMarkAssembled = (e: React.MouseEvent) => {
     e.stopPropagation();
     setCardStatus("assembled");
@@ -153,7 +169,32 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           kaspiDelivery={attributes.kaspiDelivery}
           deliveryMode={attributes.deliveryMode}
         />
-        {attributes.isKaspiDelivery &&
+        {attributes.deliveryMode === "DELIVERY_LOCAL" ? (
+          invoiceLink ? (
+            <a
+              href={invoiceLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 transition-colors duration-200"
+            >
+              <FileText size={16} />
+            </a>
+          ) : (
+            <button
+              onClick={handleGenerateWaybill}
+              disabled={isGenerating}
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
+            >
+              {isGenerating ? (
+                <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
+              ) : (
+                <FileText size={16} />
+              )}
+            </button>
+          )
+        ) : (
+          attributes.isKaspiDelivery &&
           !attributes.preOrder &&
           (invoiceLink ? (
             <a
@@ -177,7 +218,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                 <FileText size={16} />
               )}
             </button>
-          ))}
+          ))
+        )}
       </div>
       <OrderHeader
         code={attributes.code}

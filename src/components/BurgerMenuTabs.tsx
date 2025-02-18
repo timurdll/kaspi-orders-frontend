@@ -43,12 +43,7 @@ export const BurgerMenuTabs: React.FC<BurgerMenuTabsProps> = ({
       {menuOpen && (
         <div className="absolute top-14 w-64 bg-white shadow-lg rounded-lg overflow-hidden z-50 right-0">
           <nav className="flex flex-col divide-y divide-gray-200">
-            {[
-              "current",
-              "pre-orders",
-              "archiveabsoluteabsolute",
-              "returned",
-            ].map((tab) => (
+            {["current", "pre-orders", "archive", "returned"].map((tab) => (
               <button
                 key={tab}
                 className={`px-4 py-3 text-left transition-all font-medium text-sm flex justify-between items-center ${
