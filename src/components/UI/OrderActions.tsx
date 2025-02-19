@@ -28,7 +28,7 @@ export const OrderActions: React.FC<OrderActionsProps> = ({
   if (
     attributes.isKaspiDelivery &&
     attributes.kaspiDelivery?.express &&
-    cardStatus === "invoice"
+    attributes.assembled == false
   ) {
     return (
       <button

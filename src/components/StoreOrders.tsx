@@ -4,8 +4,8 @@ import { Store } from "../types/orders";
 import { useDeleteStoreMutation } from "../redux/api";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 import { StoreHeader } from "./StoreHeader";
-import { OrdersDeliveryDayTabs } from "./OrdersDeliveryDayTabs";
 import { OrdersList } from "./OrdersList";
+import { OrdersDeliveryDayTabs } from "./OrdersDeliveryDayTabs";
 
 interface StoreOrdersProps {
   store: Store;

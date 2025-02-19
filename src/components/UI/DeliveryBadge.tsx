@@ -9,6 +9,7 @@ interface OrderBadgeProps {
     express?: boolean;
   };
   deliveryMode?: string;
+  state?: string; // добавляем поле state
 }
 
 export const OrderBadge: React.FC<OrderBadgeProps> = ({
@@ -16,7 +17,17 @@ export const OrderBadge: React.FC<OrderBadgeProps> = ({
   isKaspiDelivery,
   kaspiDelivery,
   deliveryMode,
+  state,
 }) => {
+  // Если заказ в состоянии SIGN_REQUIRED, добавляем бейдж
+  if (state === "SIGN_REQUIRED") {
+    return (
+      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-800">
+        Требуется подпись
+      </span>
+    );
+  }
+
   if (isReturnedOrder && isKaspiDelivery) {
     const returned = kaspiDelivery?.returnedToWarehouse;
     return (

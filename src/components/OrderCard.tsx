@@ -42,6 +42,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   );
   const [securityCode, setSecurityCode] = useState<string>("");
   const [showCodeInput, setShowCodeInput] = useState<boolean>(false);
+  console.log(order);
 
   const [sendSecurityCode] = useSendSecurityCodeMutation();
   const [completeOrder] = useCompleteOrderMutation();
@@ -94,8 +95,48 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
+  // Функция, которая гарантирует, что заказ переведён в assembled (собран)
+  const ensureAssembled = async (): Promise<boolean> => {
+    // Если заказ в состоянии SIGN_REQUIRED – уведомляем пользователя и не пытаемся обновлять статус
+    if (attributes.state === "SIGN_REQUIRED") {
+      alert("Для заказов с требуемой подписью получение накладной недоступно");
+      return false;
+    }
+
+    // Если уже собран – ничего не делаем
+    if (attributes.assembled || cardStatus === "assembled") {
+      return true;
+    }
+    try {
+      // Обновляем статус (например, переводим в режим "ASSEMBLE")
+      const updateResponse = await updateOrderStatus({
+        orderId,
+        storeName,
+        // при необходимости можно добавить code: attributes.code
+      }).unwrap();
+      if (updateResponse.waybill) {
+        setInvoiceLink(updateResponse.waybill);
+        setCardStatus("invoice");
+        return true;
+      }
+    } catch (error) {
+      console.error("Ошибка обновления статуса заказа:", error);
+      alert("Ошибка обновления статуса заказа");
+      return false;
+    }
+    // Ждем небольшую задержку для обработки на backend (например, 2 секунды)
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    setCardStatus("assembled");
+    return true;
+  };
+
+  // Функция для получения накладной
   const handleGetWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    // Сначала убеждаемся, что заказ собран
+    const assembled = await ensureAssembled();
+    if (!assembled) return;
+    // Если заказ относится к express или к своей доставке – можно использовать getWaybill логику
     try {
       const response = await updateOrderStatus({ orderId, storeName }).unwrap();
       if (response.waybill) {
@@ -111,6 +152,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
+  // Функция для формирования накладной для заказов со статусом "Своя доставка"
   const handleGenerateWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -141,7 +183,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  // Пример вычисления цвета фона карточки
+  // Логика определения цвета фона карточки (без изменений)
   const getBgColor = () => {
     if (attributes.isKaspiDelivery) {
       if (cardStatus === "new") return "bg-red-50 border-red-200";
@@ -163,12 +205,16 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       className={`rounded-lg border p-4 ${bgColor} transition-colors duration-300`}
     >
       <div className="flex justify-between items-center mb-2">
+        {/* Отображение бейджа */}
         <OrderBadge
           isReturnedOrder={isReturnedOrder}
           isKaspiDelivery={attributes.isKaspiDelivery}
           kaspiDelivery={attributes.kaspiDelivery}
           deliveryMode={attributes.deliveryMode}
+          state={attributes.state} // передаём состояние заказа
         />
+
+        {/* В зависимости от deliveryMode выбираем логику получения накладной */}
         {attributes.deliveryMode === "DELIVERY_LOCAL" ? (
           invoiceLink ? (
             <a
@@ -194,6 +240,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             </button>
           )
         ) : (
+          // Для остальных типов (например, express)
           attributes.isKaspiDelivery &&
           !attributes.preOrder &&
           (invoiceLink ? (
