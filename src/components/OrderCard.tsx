@@ -42,7 +42,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   );
   const [securityCode, setSecurityCode] = useState<string>("");
   const [showCodeInput, setShowCodeInput] = useState<boolean>(false);
-  console.log(order);
 
   const [sendSecurityCode] = useSendSecurityCodeMutation();
   const [completeOrder] = useCompleteOrderMutation();
