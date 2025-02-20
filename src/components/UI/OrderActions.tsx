@@ -1,4 +1,3 @@
-// src/components/OrderActions.tsx
 import React from "react";
 
 interface OrderActionsProps {
@@ -28,7 +27,7 @@ export const OrderActions: React.FC<OrderActionsProps> = ({
   if (
     attributes.isKaspiDelivery &&
     attributes.kaspiDelivery?.express &&
-    attributes.assembled == false
+    attributes.assembled === false
   ) {
     return (
       <button
@@ -41,7 +40,10 @@ export const OrderActions: React.FC<OrderActionsProps> = ({
   }
 
   // Для заказов с режимом доставки DELIVERY_LOCAL
-  if (attributes.deliveryMode === "DELIVERY_LOCAL") {
+  if (
+    attributes.deliveryMode === "DELIVERY_LOCAL" ||
+    attributes.deliveryMode === "DELIVERY_PICKUP"
+  ) {
     if (cardStatus === "new") {
       return (
         <button

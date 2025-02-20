@@ -33,6 +33,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   isReturnedOrder = false,
 }) => {
   const { attributes, products } = order;
+  console.log(order);
+
   const orderId = order.id;
   const [cardStatus, setCardStatus] = useState<
     "new" | "invoice" | "assembled" | "code_sent" | "completed" | "transferred"
@@ -94,24 +96,19 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  // Функция, которая гарантирует, что заказ переведён в assembled (собран)
+  // Функции для получения/генерации накладной остаются для других типов доставки
   const ensureAssembled = async (): Promise<boolean> => {
-    // Если заказ в состоянии SIGN_REQUIRED – уведомляем пользователя и не пытаемся обновлять статус
     if (attributes.state === "SIGN_REQUIRED") {
       alert("Для заказов с требуемой подписью получение накладной недоступно");
       return false;
     }
-
-    // Если уже собран – ничего не делаем
     if (attributes.assembled || cardStatus === "assembled") {
       return true;
     }
     try {
-      // Обновляем статус (например, переводим в режим "ASSEMBLE")
       const updateResponse = await updateOrderStatus({
         orderId,
         storeName,
-        // при необходимости можно добавить code: attributes.code
       }).unwrap();
       if (updateResponse.waybill) {
         setInvoiceLink(updateResponse.waybill);
@@ -123,19 +120,15 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       alert("Ошибка обновления статуса заказа");
       return false;
     }
-    // Ждем небольшую задержку для обработки на backend (например, 2 секунды)
     await new Promise((resolve) => setTimeout(resolve, 2000));
     setCardStatus("assembled");
     return true;
   };
 
-  // Функция для получения накладной
   const handleGetWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Сначала убеждаемся, что заказ собран
     const assembled = await ensureAssembled();
     if (!assembled) return;
-    // Если заказ относится к express или к своей доставке – можно использовать getWaybill логику
     try {
       const response = await updateOrderStatus({ orderId, storeName }).unwrap();
       if (response.waybill) {
@@ -151,9 +144,10 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  // Функция для формирования накладной для заказов со статусом "Своя доставка"
   const handleGenerateWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    const assembled = await ensureAssembled();
+    if (!assembled) return;
     try {
       const blob = await triggerGenerateWaybill(orderId).unwrap();
       const blobUrl = window.URL.createObjectURL(blob);
@@ -182,7 +176,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  // Логика определения цвета фона карточки (без изменений)
+  // Определяем фон карточки (без изменений)
   const getBgColor = () => {
     if (attributes.isKaspiDelivery) {
       if (cardStatus === "new") return "bg-red-50 border-red-200";
@@ -204,16 +198,14 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       className={`rounded-lg border p-4 ${bgColor} transition-colors duration-300`}
     >
       <div className="flex justify-between items-center mb-2">
-        {/* Отображение бейджа */}
         <OrderBadge
           isReturnedOrder={isReturnedOrder}
           isKaspiDelivery={attributes.isKaspiDelivery}
           kaspiDelivery={attributes.kaspiDelivery}
           deliveryMode={attributes.deliveryMode}
-          state={attributes.state} // передаём состояние заказа
+          state={attributes.state}
         />
-
-        {/* В зависимости от deliveryMode выбираем логику получения накладной */}
+        {/* Выбираем логику кнопки в зависимости от типа доставки */}
         {attributes.deliveryMode === "DELIVERY_LOCAL" ? (
           invoiceLink ? (
             <a
@@ -238,8 +230,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
               )}
             </button>
           )
-        ) : (
-          // Для остальных типов (например, express)
+        ) : attributes.deliveryMode === "DELIVERY_PICKUP" ? null : (
+          // Для остальных (например, express) используем логику получения накладной
           attributes.isKaspiDelivery &&
           !attributes.preOrder &&
           (invoiceLink ? (
