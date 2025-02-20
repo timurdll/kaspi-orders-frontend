@@ -146,8 +146,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
   const handleGenerateWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const assembled = await ensureAssembled();
-    if (!assembled) return;
     try {
       const blob = await triggerGenerateWaybill(orderId).unwrap();
       const blobUrl = window.URL.createObjectURL(blob);
