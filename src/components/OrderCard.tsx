@@ -33,7 +33,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   isReturnedOrder = false,
 }) => {
   const { attributes, products } = order;
-  console.log(order);
+  // console.log(order);
 
   const orderId = order.id;
   const [cardStatus, setCardStatus] = useState<
