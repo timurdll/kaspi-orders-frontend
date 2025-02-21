@@ -30,9 +30,10 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   storeName,
   isReturnedOrder = false,
 }) => {
-  const { attributes, products } = order;
-  // console.log(order);
+  // Если order или order.attributes отсутствуют, ничего не рендерим
+  if (!order || !order.attributes) return null;
 
+  const { attributes, products } = order;
   const orderId = order.id;
   const [cardStatus, setCardStatus] = useState<
     "new" | "invoice" | "assembled" | "code_sent" | "completed" | "transferred"
@@ -66,7 +67,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         orderCode: attributes.code,
       }).unwrap();
       setShowCodeInput(true);
-      // Для DELIVERY_LOCAL и DELIVERY_PICKUP не меняем cardStatus
+      // Для DELIVERY_LOCAL и DELIVERY_PICKUP оставляем статус "new"
       if (
         attributes.deliveryMode !== "DELIVERY_LOCAL" &&
         attributes.deliveryMode !== "DELIVERY_PICKUP"
@@ -94,7 +95,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       }).unwrap();
       setShowCodeInput(false);
       setSecurityCode("");
-      // Для DELIVERY_LOCAL и DELIVERY_PICKUP не меняем cardStatus
       if (
         attributes.deliveryMode !== "DELIVERY_LOCAL" &&
         attributes.deliveryMode !== "DELIVERY_PICKUP"
@@ -107,36 +107,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  // Функции для получения/генерации накладной остаются для других типов доставки
-  // const ensureAssembled = async (): Promise<boolean> => {
-  //   if (attributes.state === "SIGN_REQUIRED") {
-  //     alert("Для заказов с требуемой подписью получение накладной недоступно");
-  //     return false;
-  //   }
-  //   if (attributes.assembled || cardStatus === "assembled") {
-  //     return true;
-  //   }
-  //   try {
-  //     const updateResponse = await updateOrderStatus({
-  //       orderId,
-  //       storeName,
-  //     }).unwrap();
-  //     if (updateResponse.waybill) {
-  //       setInvoiceLink(updateResponse.waybill);
-  //       setCardStatus("invoice");
-  //       return true;
-  //     }
-  //   } catch (error) {
-  //     console.error("Ошибка обновления статуса заказа:", error);
-  //     alert("Ошибка обновления статуса заказа");
-  //     return false;
-  //   }
-  //   await new Promise((resolve) => setTimeout(resolve, 2000));
-  //   setCardStatus("assembled");
-  //   return true;
-  // };
-
-  // Для DELIVERY_LOCAL – генерируем накладную (обновляя статус)
+  // Функции получения/генерации накладной для заказов Kaspi доставки:
   const handleGenerateWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -151,7 +122,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  // Для заказов DELIVERY_REGIONAL_TODOOR и DELIVERY_PICKUP (не express) – получаем накладную, обновляя статус
   const handleGetWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -169,7 +139,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  // Для express заказов – получаем накладную, не обновляя статус
   const handleGetWaybillExpress = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -177,7 +146,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       if (response.waybill) {
         setInvoiceLink(response.waybill);
         window.open(response.waybill, "_blank");
-        // Не меняем cardStatus
+        // Не обновляем cardStatus для express
       } else {
         console.log("Накладная еще не сформирована, повторите запрос позже.");
       }
@@ -203,8 +172,101 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
+  // Функция для рендеринга кнопки накладной согласно требованиям
+  const renderInvoiceButton = () => {
+    // Если заказ со статусом SIGN_REQUIRED – не показываем кнопку
+    if (attributes.state === "SIGN_REQUIRED") return null;
+
+    // Для DELIVERY_LOCAL: показываем кнопку генерации накладной
+    if (attributes.deliveryMode === "DELIVERY_LOCAL") {
+      return invoiceLink ? (
+        <a
+          href={invoiceLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 transition-colors duration-200"
+        >
+          <FileText size={16} />
+        </a>
+      ) : (
+        <button
+          onClick={handleGenerateWaybill}
+          disabled={isGenerating}
+          className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
+        >
+          {isGenerating ? (
+            <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
+          ) : (
+            <FileText size={16} />
+          )}
+        </button>
+      );
+    }
+
+    // Для DELIVERY_REGIONAL_TODOOR и DELIVERY_PICKUP, если isKaspiDelivery === true и не express:
+    if (
+      attributes.isKaspiDelivery &&
+      !attributes.kaspiDelivery?.express &&
+      (attributes.deliveryMode === "DELIVERY_REGIONAL_TODOOR" ||
+        attributes.deliveryMode === "DELIVERY_PICKUP")
+    ) {
+      return invoiceLink ? (
+        <a
+          href={invoiceLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 transition-colors duration-200"
+        >
+          <FileText size={16} />
+        </a>
+      ) : (
+        <button
+          onClick={handleGetWaybill}
+          disabled={isUpdating}
+          className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
+        >
+          {isUpdating ? (
+            <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
+          ) : (
+            <FileText size={16} />
+          )}
+        </button>
+      );
+    }
+
+    // Для express заказов (isKaspiDelivery true и express === true):
+    if (attributes.isKaspiDelivery && attributes.kaspiDelivery?.express) {
+      return invoiceLink ? (
+        <a
+          href={invoiceLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 transition-colors duration-200"
+        >
+          <FileText size={16} />
+        </a>
+      ) : (
+        <button
+          onClick={handleGetWaybillExpress}
+          disabled={isUpdating}
+          className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
+        >
+          {isUpdating ? (
+            <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
+          ) : (
+            <FileText size={16} />
+          )}
+        </button>
+      );
+    }
+    return null;
+  };
+
   // Определяем фон карточки (без изменений)
-  const getBgColor = () => {
+  const bgColor = (() => {
     if (attributes.isKaspiDelivery) {
       if (cardStatus === "new") return "bg-red-50 border-red-200";
       if (cardStatus === "invoice") return "bg-yellow-50 border-yellow-200";
@@ -217,8 +279,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       return "bg-red-50 border-red-200";
     }
     return "bg-red-50 border-red-200";
-  };
-  const bgColor = getBgColor();
+  })();
 
   return (
     <div
@@ -232,85 +293,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           deliveryMode={attributes.deliveryMode}
           state={attributes.state}
         />
-        {/* Выбираем логику кнопки в зависимости от типа доставки */}
-        {attributes.state ===
-        "SIGN_REQUIRED" ? null : attributes.deliveryMode ===
-          "DELIVERY_LOCAL" ? (
-          invoiceLink ? (
-            <a
-              href={invoiceLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 transition-colors duration-200"
-            >
-              <FileText size={16} />
-            </a>
-          ) : (
-            <button
-              onClick={handleGenerateWaybill}
-              disabled={isGenerating}
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
-            >
-              {isGenerating ? (
-                <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
-              ) : (
-                <FileText size={16} />
-              )}
-            </button>
-          )
-        ) : attributes.isKaspiDelivery &&
-          (attributes.deliveryMode === "DELIVERY_REGIONAL_TODOOR" ||
-            attributes.deliveryMode === "DELIVERY_PICKUP") &&
-          !attributes.kaspiDelivery?.express ? (
-          invoiceLink ? (
-            <a
-              href={invoiceLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 transition-colors duration-200"
-            >
-              <FileText size={16} />
-            </a>
-          ) : (
-            <button
-              onClick={handleGetWaybill}
-              disabled={isUpdating}
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
-            >
-              {isUpdating ? (
-                <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
-              ) : (
-                <FileText size={16} />
-              )}
-            </button>
-          )
-        ) : attributes.isKaspiDelivery && attributes.kaspiDelivery?.express ? (
-          invoiceLink ? (
-            <a
-              href={invoiceLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 transition-colors duration-200"
-            >
-              <FileText size={16} />
-            </a>
-          ) : (
-            <button
-              onClick={handleGetWaybillExpress}
-              disabled={isUpdating}
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
-            >
-              {isUpdating ? (
-                <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
-              ) : (
-                <FileText size={16} />
-              )}
-            </button>
-          )
-        ) : null}
+        {renderInvoiceButton()}
       </div>
       <OrderHeader
         code={attributes.code}
