@@ -16,6 +16,7 @@ import { Loader } from "./Loader";
 import { AddStoreModal } from "./AddStoreModal";
 import { CopyNotificationProvider } from "./GlobalCopyNotification";
 import { LoginPage } from "./LoginPage";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 interface AggregatedCounts {
   todayCount: number;
@@ -165,6 +166,23 @@ export const Dashboard: React.FC = () => {
     }
   }, [currentOrders]);
 
+  const safeAggregateData = (data: any): AggregatedCounts => {
+    if (!data?.stores) {
+      return { todayCount: 0, tomorrowCount: 0, totalCount: 0 };
+    }
+    return aggregateCounts(data);
+  };
+
+  // Safe store access
+  const getSafeStores = (data: any) => {
+    if (!data?.stores) return [];
+    return data.stores.map((store: any) => ({
+      ...store,
+      orders: store.orders || [],
+      storeName: store.storeName || "Неизвестный магазин",
+    }));
+  };
+
   console.log(currentOrders);
 
   if (!isAuthenticated) {
@@ -188,49 +206,69 @@ export const Dashboard: React.FC = () => {
 
   if (isLoading && !data) return <Loader />;
 
-  const currentCounts = currentOrders ? aggregateCounts(currentOrders) : null;
-  const archiveCounts = archiveOrders ? aggregateCounts(archiveOrders) : null;
-  const preOrdersCounts = preOrders ? aggregateCounts(preOrders) : null;
-  const returnedCounts = returnedOrders
-    ? aggregateCounts(returnedOrders)
-    : null;
+  // const currentCounts = currentOrders ? aggregateCounts(currentOrders) : null;
+  // const archiveCounts = archiveOrders ? aggregateCounts(archiveOrders) : null;
+  // const preOrdersCounts = preOrders ? aggregateCounts(preOrders) : null;
+  // const returnedCounts = returnedOrders
+  //   ? aggregateCounts(returnedOrders)
+  //   : null;
 
-  const counts = {
-    current: currentCounts,
-    archive: archiveCounts,
-    preOrders: preOrdersCounts,
-    returned: returnedCounts,
-  };
+  // const counts = {
+  //   current: currentCounts,
+  //   archive: archiveCounts,
+  //   preOrders: preOrdersCounts,
+  //   returned: returnedCounts,
+  // };
 
   const handleLogout = () => {
     dispatch(logout());
   };
 
   return (
-    <CopyNotificationProvider>
-      <div className="container mx-auto px-4 py-8">
-        {/* Header включает бургер-меню (которая теперь отображается всегда) */}
-        <Header
-          onAddStore={() => setIsAddStoreModalOpen(true)}
-          onLogout={handleLogout}
-          activeTab={tab}
-          onTabChange={setTab}
-          counts={counts}
-        />
-        {/* Десктопное представление – вкладки */}
-        <div className="hidden md:flex mb-6">
-          <OrdersTypeTabs
+    <ErrorBoundary>
+      <CopyNotificationProvider>
+        <div className="container mx-auto px-4 py-8">
+          {/* Header включает бургер-меню (которая теперь отображается всегда) */}
+          <Header
+            onAddStore={() => setIsAddStoreModalOpen(true)}
+            onLogout={handleLogout}
             activeTab={tab}
             onTabChange={setTab}
-            counts={counts}
+            counts={{
+              current: currentOrders ? safeAggregateData(currentOrders) : null,
+              archive: archiveOrders ? safeAggregateData(archiveOrders) : null,
+              preOrders: preOrders ? safeAggregateData(preOrders) : null,
+              returned: returnedOrders
+                ? safeAggregateData(returnedOrders)
+                : null,
+            }}
+          />
+          {/* Десктопное представление – вкладки */}
+          <div className="hidden md:flex mb-6">
+            <OrdersTypeTabs
+              activeTab={tab}
+              onTabChange={setTab}
+              counts={{
+                current: currentOrders
+                  ? safeAggregateData(currentOrders)
+                  : null,
+                archive: archiveOrders
+                  ? safeAggregateData(archiveOrders)
+                  : null,
+                preOrders: preOrders ? safeAggregateData(preOrders) : null,
+                returned: returnedOrders
+                  ? safeAggregateData(returnedOrders)
+                  : null,
+              }}
+            />
+          </div>
+          {data && <StoreOrdersList stores={getSafeStores(data)} type={tab} />}{" "}
+          <AddStoreModal
+            isOpen={isAddStoreModalOpen}
+            onClose={() => setIsAddStoreModalOpen(false)}
           />
         </div>
-        <StoreOrdersList stores={data.stores} type={tab} />
-        <AddStoreModal
-          isOpen={isAddStoreModalOpen}
-          onClose={() => setIsAddStoreModalOpen(false)}
-        />
-      </div>
-    </CopyNotificationProvider>
+      </CopyNotificationProvider>
+    </ErrorBoundary>
   );
 };

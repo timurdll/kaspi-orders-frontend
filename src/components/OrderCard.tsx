@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { KaspiOrder } from "../types/orders";
+import { KaspiOrder, OrderStatus } from "../types/orders";
 import {
   useCompleteOrderMutation,
   useSendSecurityCodeMutation,
@@ -18,11 +18,16 @@ interface OrderCardProps {
   isReturnedOrder?: boolean;
 }
 
-const getInitialStatus = (order: KaspiOrder) => {
-  const { attributes } = order;
-  if (attributes.assembled) return "assembled";
-  if (attributes.kaspiDelivery?.waybill) return "invoice";
-  return "new";
+const getInitialStatus = (order: KaspiOrder): OrderStatus => {
+  try {
+    const { attributes } = order;
+    if (attributes.assembled) return "assembled";
+    if (attributes.kaspiDelivery?.waybill) return "invoice";
+    return "new";
+  } catch (error) {
+    console.error("Error in getInitialStatus:", error);
+    return "new";
+  }
 };
 
 export const OrderCard: React.FC<OrderCardProps> = ({
@@ -30,19 +35,34 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   storeName,
   isReturnedOrder = false,
 }) => {
-  // Если order или order.attributes отсутствуют, ничего не рендерим
-  if (!order || !order.attributes) return null;
+  // Type guard to validate required order structure
+  const validateOrder = (order: KaspiOrder): order is KaspiOrder => {
+    return (
+      order?.id !== undefined &&
+      order?.attributes !== undefined &&
+      order?.products !== undefined
+    );
+  };
 
-  const { attributes, products } = order;
-  const orderId = order.id;
-  const [cardStatus, setCardStatus] = useState<
-    "new" | "invoice" | "assembled" | "code_sent" | "completed" | "transferred"
-  >(getInitialStatus(order));
+  if (!validateOrder(order)) {
+    return (
+      <div className="rounded-lg border p-4 bg-red-50">
+        <p className="text-red-600">Некорректные данные заказа</p>
+      </div>
+    );
+  }
+
+  const { attributes, products, id: orderId } = order;
+
+  const [cardStatus, setCardStatus] = useState<OrderStatus>(
+    getInitialStatus(order)
+  );
   const [invoiceLink, setInvoiceLink] = useState<string | null>(
     attributes.kaspiDelivery?.waybill || null
   );
   const [securityCode, setSecurityCode] = useState<string>("");
   const [showCodeInput, setShowCodeInput] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [sendSecurityCode] = useSendSecurityCodeMutation();
   const [completeOrder] = useCompleteOrderMutation();
@@ -52,22 +72,32 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     useLazyGenerateWaybillQuery();
 
   useEffect(() => {
-    setInvoiceLink(attributes.kaspiDelivery?.waybill || null);
-    setCardStatus(getInitialStatus(order));
-    setShowCodeInput(false);
-    setSecurityCode("");
+    try {
+      setInvoiceLink(attributes.kaspiDelivery?.waybill || null);
+      setCardStatus(getInitialStatus(order));
+      setShowCodeInput(false);
+      setSecurityCode("");
+      setError(null);
+    } catch (error) {
+      console.error("Error in useEffect:", error);
+      setError("Ошибка при обновлении состояния заказа");
+    }
   }, [order, attributes.kaspiDelivery]);
 
   const handleSendCode = async (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
+    setError(null);
+
     try {
       await sendSecurityCode({
         orderId,
         storeName,
         orderCode: attributes.code,
       }).unwrap();
+
       setShowCodeInput(true);
-      // Для DELIVERY_LOCAL и DELIVERY_PICKUP оставляем статус "new"
+
       if (
         attributes.deliveryMode !== "DELIVERY_LOCAL" &&
         attributes.deliveryMode !== "DELIVERY_PICKUP"
@@ -76,16 +106,19 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       }
     } catch (error) {
       console.error("Error sending security code:", error);
-      alert("Ошибка при отправке кода");
+      setError("Ошибка при отправке кода");
     }
   };
 
   const handleCompleteOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
     if (!securityCode) {
-      alert("Пожалуйста, введите код");
+      setError("Пожалуйста, введите код");
       return;
     }
+
     try {
       await completeOrder({
         orderId,
@@ -93,8 +126,10 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         orderCode: attributes.code,
         securityCode,
       }).unwrap();
+
       setShowCodeInput(false);
       setSecurityCode("");
+
       if (
         attributes.deliveryMode !== "DELIVERY_LOCAL" &&
         attributes.deliveryMode !== "DELIVERY_PICKUP"
@@ -103,56 +138,64 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       }
     } catch (error) {
       console.error("Error completing order:", error);
-      alert("Ошибка при завершении заказа");
+      setError("Ошибка при завершении заказа");
     }
   };
 
-  // Функции получения/генерации накладной для заказов Kaspi доставки:
   const handleGenerateWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    setError(null);
+
     try {
       const blob = await triggerGenerateWaybill(orderId).unwrap();
+      if (!blob) {
+        throw new Error("Не удалось получить накладную");
+      }
+
       const blobUrl = window.URL.createObjectURL(blob);
       setInvoiceLink(blobUrl);
       window.open(blobUrl, "_blank");
       setCardStatus("invoice");
     } catch (error) {
-      console.error("Ошибка формирования накладной:", error);
-      alert("Ошибка формирования накладной");
+      console.error("Error generating waybill:", error);
+      setError("Ошибка формирования накладной");
     }
   };
 
   const handleGetWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    setError(null);
+
     try {
       const response = await updateOrderStatus({ orderId, storeName }).unwrap();
-      if (response.waybill) {
+      if (response?.waybill) {
         setInvoiceLink(response.waybill);
         window.open(response.waybill, "_blank");
         setCardStatus("invoice");
       } else {
-        console.log("Накладная еще не сформирована, повторите запрос позже.");
+        setError("Накладная еще не сформирована, повторите запрос позже");
       }
-    } catch (error: any) {
-      console.error("Ошибка получения накладной:", error);
-      alert("Ошибка при получении накладной");
+    } catch (error) {
+      console.error("Error getting waybill:", error);
+      setError("Ошибка при получении накладной");
     }
   };
 
   const handleGetWaybillExpress = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    setError(null);
+
     try {
       const response = await updateOrderStatus({ orderId, storeName }).unwrap();
-      if (response.waybill) {
+      if (response?.waybill) {
         setInvoiceLink(response.waybill);
         window.open(response.waybill, "_blank");
-        // Не обновляем cardStatus для express
       } else {
-        console.log("Накладная еще не сформирована, повторите запрос позже.");
+        setError("Накладная еще не сформирована, повторите запрос позже");
       }
-    } catch (error: any) {
-      console.error("Ошибка получения накладной для express:", error);
-      alert("Ошибка при получении накладной");
+    } catch (error) {
+      console.error("Error getting express waybill:", error);
+      setError("Ошибка при получении накладной");
     }
   };
 
@@ -163,21 +206,20 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
   const handleSendForTransfer = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    setError(null);
+
     try {
       await updateOrderStatus({ orderId, storeName }).unwrap();
       setCardStatus("transferred");
     } catch (error) {
-      console.error("Ошибка при отправке на передачу:", error);
-      alert("Ошибка при обновлении статуса заказа");
+      console.error("Error sending for transfer:", error);
+      setError("Ошибка при обновлении статуса заказа");
     }
   };
 
-  // Функция для рендеринга кнопки накладной согласно требованиям
   const renderInvoiceButton = () => {
-    // Если заказ со статусом SIGN_REQUIRED – не показываем кнопку
     if (attributes.state === "SIGN_REQUIRED") return null;
 
-    // Для DELIVERY_LOCAL: показываем кнопку генерации накладной
     if (attributes.deliveryMode === "DELIVERY_LOCAL") {
       return invoiceLink ? (
         <a
@@ -187,7 +229,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           onClick={(e) => e.stopPropagation()}
           className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 transition-colors duration-200"
         >
-          <FileText size={16} />
+          <FileText size={16} className="text-white" />
         </a>
       ) : (
         <button
@@ -198,13 +240,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           {isGenerating ? (
             <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
           ) : (
-            <FileText size={16} />
+            <FileText size={16} className="text-white" />
           )}
         </button>
       );
     }
 
-    // Для DELIVERY_REGIONAL_TODOOR и DELIVERY_PICKUP, если isKaspiDelivery === true и не express:
     if (
       attributes.isKaspiDelivery &&
       !attributes.kaspiDelivery?.express &&
@@ -219,7 +260,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           onClick={(e) => e.stopPropagation()}
           className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 transition-colors duration-200"
         >
-          <FileText size={16} />
+          <FileText size={16} className="text-white" />
         </a>
       ) : (
         <button
@@ -230,13 +271,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           {isUpdating ? (
             <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
           ) : (
-            <FileText size={16} />
+            <FileText size={16} className="text-white" />
           )}
         </button>
       );
     }
 
-    // Для express заказов (isKaspiDelivery true и express === true):
     if (attributes.isKaspiDelivery && attributes.kaspiDelivery?.express) {
       return invoiceLink ? (
         <a
@@ -246,7 +286,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           onClick={(e) => e.stopPropagation()}
           className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 transition-colors duration-200"
         >
-          <FileText size={16} />
+          <FileText size={16} className="text-white" />
         </a>
       ) : (
         <button
@@ -257,34 +297,45 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           {isUpdating ? (
             <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
           ) : (
-            <FileText size={16} />
+            <FileText size={16} className="text-white" />
           )}
         </button>
       );
     }
+
     return null;
   };
 
-  // Определяем фон карточки (без изменений)
-  const bgColor = (() => {
+  const getBgColor = (): string => {
     if (attributes.isKaspiDelivery) {
-      if (cardStatus === "new") return "bg-red-50 border-red-200";
-      if (cardStatus === "invoice") return "bg-yellow-50 border-yellow-200";
-      if (cardStatus === "transferred") return "bg-indigo-50 border-indigo-200";
-      if (cardStatus === "assembled" || cardStatus === "completed")
-        return "bg-green-50 border-green-200";
-    } else {
-      if (cardStatus === "assembled" || cardStatus === "completed")
-        return "bg-green-50 border-green-200";
-      return "bg-red-50 border-red-200";
+      switch (cardStatus) {
+        case "new":
+          return "bg-red-50 border-red-200";
+        case "invoice":
+          return "bg-yellow-50 border-yellow-200";
+        case "transferred":
+          return "bg-indigo-50 border-indigo-200";
+        case "assembled":
+        case "completed":
+          return "bg-green-50 border-green-200";
+        default:
+          return "bg-red-50 border-red-200";
+      }
     }
-    return "bg-red-50 border-red-200";
-  })();
+
+    return cardStatus === "assembled" || cardStatus === "completed"
+      ? "bg-green-50 border-green-200"
+      : "bg-red-50 border-red-200";
+  };
 
   return (
     <div
-      className={`rounded-lg border p-4 ${bgColor} transition-colors duration-300`}
+      className={`rounded-lg border p-4 ${getBgColor()} transition-colors duration-300`}
     >
+      {error && (
+        <div className="mb-2 p-2 bg-red-100 text-red-700 rounded">{error}</div>
+      )}
+
       <div className="flex justify-between items-center mb-2">
         <OrderBadge
           isReturnedOrder={isReturnedOrder}
@@ -295,15 +346,18 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         />
         {renderInvoiceButton()}
       </div>
+
       <OrderHeader
         code={attributes.code}
         creationDate={attributes.creationDate}
       />
+
       <OrderDetails
         customer={attributes.customer}
         deliveryAddress={attributes.deliveryAddress}
         products={products}
       />
+
       <div className="mt-4">
         <OrderActions
           attributes={attributes}

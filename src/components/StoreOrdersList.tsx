@@ -8,16 +8,20 @@ interface StoreOrdersListProps {
 }
 
 export const StoreOrdersList: React.FC<StoreOrdersListProps> = ({
-  stores,
+  stores = [],
   type,
 }) => {
   const [activeStore, setActiveStore] = useState<string | null>(
-    stores.length > 0 ? stores[0].storeName : null
+    stores.length > 0 ? stores[0]?.storeName || null : null
   );
 
   const activeStoreData = stores.find(
-    (store) => store.storeName === activeStore
+    (store) => store?.storeName === activeStore
   );
+
+  if (!stores.length) {
+    return <div className="text-gray-500">Нет доступных магазинов</div>;
+  }
 
   return (
     <div>
