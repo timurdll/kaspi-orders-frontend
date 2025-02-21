@@ -127,37 +127,40 @@ export const Dashboard: React.FC = () => {
       cachedCurrentOrders &&
       cachedCurrentOrders.stores
     ) {
-      // Для каждого магазина в новом ответе
       const mergedStores = currentOrders.stores.map((newStore: any) => {
-        // Находим магазин с таким же именем в кешированных данных
         const cachedStore = cachedCurrentOrders.stores.find(
           (s: any) => s.storeName === newStore.storeName
         );
         if (!cachedStore) return newStore;
 
-        // Собираем идентификаторы заказов из нового ответа
+        // Если orders отсутствуют, используем пустой массив
+        const newOrders = newStore.orders || [];
+        const cachedOrders = cachedStore.orders || [];
+
+        // Собираем ID заказов из нового ответа (игнорируем null)
         const newOrderIds = new Set(
-          newStore.orders.map((order: any) => order.id)
+          newOrders.map((order: any) => order?.id).filter(Boolean)
         );
 
-        // Из кеша оставляем заказы, state которых не ARCHIVED и которых нет в новом ответе
-        const preservedOrders = cachedStore.orders.filter((order: any) => {
+        // Из кеша оставляем заказы, state которых не "ARCHIVED" и которых нет в новом ответе
+        const preservedOrders = cachedOrders.filter((order: any) => {
           return (
-            order.attributes.state !== "ARCHIVED" && !newOrderIds.has(order.id)
+            order &&
+            order.attributes &&
+            order.attributes.state !== "ARCHIVED" &&
+            !newOrderIds.has(order.id)
           );
         });
 
-        // Возвращаем магазин с объединёнными заказами
         return {
           ...newStore,
-          orders: [...newStore.orders, ...preservedOrders],
+          orders: [...newOrders, ...preservedOrders],
         };
       });
 
       const mergedData = { ...currentOrders, stores: mergedStores };
       setCachedCurrentOrders(mergedData);
     } else if (currentOrders) {
-      // Если в кеше ещё нет данных – просто сохраняем новый ответ
       setCachedCurrentOrders(currentOrders);
     }
   }, [currentOrders]);
