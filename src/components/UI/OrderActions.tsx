@@ -23,28 +23,13 @@ export const OrderActions: React.FC<OrderActionsProps> = ({
   onSendForTransfer,
   onSecurityCodeChange,
 }) => {
-  // Если заказ экспресс – кнопка "Отправить на передачу"
+  // Для заказов с DELIVERY_LOCAL или DELIVERY_PICKUP и isKaspiDelivery = false:
   if (
-    attributes.isKaspiDelivery &&
-    attributes.kaspiDelivery?.express &&
-    attributes.assembled === false
+    (attributes.deliveryMode === "DELIVERY_LOCAL" ||
+      attributes.deliveryMode === "DELIVERY_PICKUP") &&
+    attributes.isKaspiDelivery === false
   ) {
-    return (
-      <button
-        onClick={onSendForTransfer}
-        className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-      >
-        Отправить на передачу
-      </button>
-    );
-  }
-
-  // Для заказов с режимом доставки DELIVERY_LOCAL
-  if (
-    attributes.deliveryMode === "DELIVERY_LOCAL" ||
-    attributes.deliveryMode === "DELIVERY_PICKUP"
-  ) {
-    if (cardStatus === "new") {
+    if (!showCodeInput) {
       return (
         <button
           onClick={onSendCode}
@@ -53,7 +38,7 @@ export const OrderActions: React.FC<OrderActionsProps> = ({
           Отправить код подтверждения
         </button>
       );
-    } else if (cardStatus === "code_sent" && showCodeInput) {
+    } else {
       return (
         <form onSubmit={onCompleteOrder} className="w-full space-y-2">
           <input
@@ -74,12 +59,29 @@ export const OrderActions: React.FC<OrderActionsProps> = ({
     }
   }
 
-  // Для остальных заказов – кнопка "Отметить, что заказ собран"
+  // Для Kaspi Express заказов (isKaspiDelivery === true и express === true):
+  if (
+    attributes.isKaspiDelivery &&
+    attributes.kaspiDelivery?.express === true
+  ) {
+    return (
+      <button
+        onClick={onSendForTransfer}
+        className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+      >
+        Отправить на передачу
+      </button>
+    );
+  }
+
+  // Для остальных заказов (например, другие типы доставки) можно оставить дополнительную логику,
+  // если требуется, например, кнопку "Отметить, что заказ собран":
   if (
     !attributes.preOrder &&
     cardStatus !== "assembled" &&
     cardStatus !== "completed" &&
-    attributes.deliveryMode !== "DELIVERY_LOCAL"
+    attributes.deliveryMode !== "DELIVERY_LOCAL" &&
+    attributes.deliveryMode !== "DELIVERY_PICKUP"
   ) {
     return (
       <button
@@ -90,5 +92,6 @@ export const OrderActions: React.FC<OrderActionsProps> = ({
       </button>
     );
   }
+
   return null;
 };

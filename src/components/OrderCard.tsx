@@ -18,9 +18,7 @@ interface OrderCardProps {
   isReturnedOrder?: boolean;
 }
 
-const getInitialStatus = (
-  order: KaspiOrder
-): "new" | "invoice" | "assembled" => {
+const getInitialStatus = (order: KaspiOrder) => {
   const { attributes } = order;
   if (attributes.assembled) return "assembled";
   if (attributes.kaspiDelivery?.waybill) return "invoice";
@@ -67,8 +65,14 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         storeName,
         orderCode: attributes.code,
       }).unwrap();
-      setCardStatus("code_sent");
       setShowCodeInput(true);
+      // Для DELIVERY_LOCAL и DELIVERY_PICKUP не меняем cardStatus
+      if (
+        attributes.deliveryMode !== "DELIVERY_LOCAL" &&
+        attributes.deliveryMode !== "DELIVERY_PICKUP"
+      ) {
+        setCardStatus("code_sent");
+      }
     } catch (error) {
       console.error("Error sending security code:", error);
       alert("Ошибка при отправке кода");
@@ -88,8 +92,15 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         orderCode: attributes.code,
         securityCode,
       }).unwrap();
-      setCardStatus("completed");
       setShowCodeInput(false);
+      setSecurityCode("");
+      // Для DELIVERY_LOCAL и DELIVERY_PICKUP не меняем cardStatus
+      if (
+        attributes.deliveryMode !== "DELIVERY_LOCAL" &&
+        attributes.deliveryMode !== "DELIVERY_PICKUP"
+      ) {
+        setCardStatus("completed");
+      }
     } catch (error) {
       console.error("Error completing order:", error);
       alert("Ошибка при завершении заказа");
@@ -97,38 +108,52 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   };
 
   // Функции для получения/генерации накладной остаются для других типов доставки
-  const ensureAssembled = async (): Promise<boolean> => {
-    if (attributes.state === "SIGN_REQUIRED") {
-      alert("Для заказов с требуемой подписью получение накладной недоступно");
-      return false;
-    }
-    if (attributes.assembled || cardStatus === "assembled") {
-      return true;
-    }
+  // const ensureAssembled = async (): Promise<boolean> => {
+  //   if (attributes.state === "SIGN_REQUIRED") {
+  //     alert("Для заказов с требуемой подписью получение накладной недоступно");
+  //     return false;
+  //   }
+  //   if (attributes.assembled || cardStatus === "assembled") {
+  //     return true;
+  //   }
+  //   try {
+  //     const updateResponse = await updateOrderStatus({
+  //       orderId,
+  //       storeName,
+  //     }).unwrap();
+  //     if (updateResponse.waybill) {
+  //       setInvoiceLink(updateResponse.waybill);
+  //       setCardStatus("invoice");
+  //       return true;
+  //     }
+  //   } catch (error) {
+  //     console.error("Ошибка обновления статуса заказа:", error);
+  //     alert("Ошибка обновления статуса заказа");
+  //     return false;
+  //   }
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
+  //   setCardStatus("assembled");
+  //   return true;
+  // };
+
+  // Для DELIVERY_LOCAL – генерируем накладную (обновляя статус)
+  const handleGenerateWaybill = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
-      const updateResponse = await updateOrderStatus({
-        orderId,
-        storeName,
-      }).unwrap();
-      if (updateResponse.waybill) {
-        setInvoiceLink(updateResponse.waybill);
-        setCardStatus("invoice");
-        return true;
-      }
+      const blob = await triggerGenerateWaybill(orderId).unwrap();
+      const blobUrl = window.URL.createObjectURL(blob);
+      setInvoiceLink(blobUrl);
+      window.open(blobUrl, "_blank");
+      setCardStatus("invoice");
     } catch (error) {
-      console.error("Ошибка обновления статуса заказа:", error);
-      alert("Ошибка обновления статуса заказа");
-      return false;
+      console.error("Ошибка формирования накладной:", error);
+      alert("Ошибка формирования накладной");
     }
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setCardStatus("assembled");
-    return true;
   };
 
+  // Для заказов DELIVERY_REGIONAL_TODOOR и DELIVERY_PICKUP (не express) – получаем накладную, обновляя статус
   const handleGetWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const assembled = await ensureAssembled();
-    if (!assembled) return;
     try {
       const response = await updateOrderStatus({ orderId, storeName }).unwrap();
       if (response.waybill) {
@@ -144,17 +169,21 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  const handleGenerateWaybill = async (e: React.MouseEvent) => {
+  // Для express заказов – получаем накладную, не обновляя статус
+  const handleGetWaybillExpress = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const blob = await triggerGenerateWaybill(orderId).unwrap();
-      const blobUrl = window.URL.createObjectURL(blob);
-      setInvoiceLink(blobUrl);
-      window.open(blobUrl, "_blank");
-      setCardStatus("invoice");
-    } catch (error) {
-      console.error("Ошибка формирования накладной:", error);
-      alert("Ошибка формирования накладной");
+      const response = await updateOrderStatus({ orderId, storeName }).unwrap();
+      if (response.waybill) {
+        setInvoiceLink(response.waybill);
+        window.open(response.waybill, "_blank");
+        // Не меняем cardStatus
+      } else {
+        console.log("Накладная еще не сформирована, повторите запрос позже.");
+      }
+    } catch (error: any) {
+      console.error("Ошибка получения накладной для express:", error);
+      alert("Ошибка при получении накладной");
     }
   };
 
@@ -204,7 +233,9 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           state={attributes.state}
         />
         {/* Выбираем логику кнопки в зависимости от типа доставки */}
-        {attributes.deliveryMode === "DELIVERY_LOCAL" ? (
+        {attributes.state ===
+        "SIGN_REQUIRED" ? null : attributes.deliveryMode ===
+          "DELIVERY_LOCAL" ? (
           invoiceLink ? (
             <a
               href={invoiceLink}
@@ -228,11 +259,11 @@ export const OrderCard: React.FC<OrderCardProps> = ({
               )}
             </button>
           )
-        ) : attributes.deliveryMode === "DELIVERY_PICKUP" ? null : (
-          // Для остальных (например, express) используем логику получения накладной
-          attributes.isKaspiDelivery &&
-          !attributes.preOrder &&
-          (invoiceLink ? (
+        ) : attributes.isKaspiDelivery &&
+          (attributes.deliveryMode === "DELIVERY_REGIONAL_TODOOR" ||
+            attributes.deliveryMode === "DELIVERY_PICKUP") &&
+          !attributes.kaspiDelivery?.express ? (
+          invoiceLink ? (
             <a
               href={invoiceLink}
               target="_blank"
@@ -254,8 +285,32 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                 <FileText size={16} />
               )}
             </button>
-          ))
-        )}
+          )
+        ) : attributes.isKaspiDelivery && attributes.kaspiDelivery?.express ? (
+          invoiceLink ? (
+            <a
+              href={invoiceLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 transition-colors duration-200"
+            >
+              <FileText size={16} />
+            </a>
+          ) : (
+            <button
+              onClick={handleGetWaybillExpress}
+              disabled={isUpdating}
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
+            >
+              {isUpdating ? (
+                <span className="loader w-4 h-4 border-2 border-t-transparent rounded-full" />
+              ) : (
+                <FileText size={16} />
+              )}
+            </button>
+          )
+        ) : null}
       </div>
       <OrderHeader
         code={attributes.code}

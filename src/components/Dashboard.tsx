@@ -119,6 +119,51 @@ export const Dashboard: React.FC = () => {
     if (returnedOrders) setCachedReturnedOrders(returnedOrders);
   }, [returnedOrders]);
 
+  useEffect(() => {
+    if (
+      currentOrders &&
+      currentOrders.stores &&
+      currentOrders.stores.length > 0 &&
+      cachedCurrentOrders &&
+      cachedCurrentOrders.stores
+    ) {
+      // Для каждого магазина в новом ответе
+      const mergedStores = currentOrders.stores.map((newStore: any) => {
+        // Находим магазин с таким же именем в кешированных данных
+        const cachedStore = cachedCurrentOrders.stores.find(
+          (s: any) => s.storeName === newStore.storeName
+        );
+        if (!cachedStore) return newStore;
+
+        // Собираем идентификаторы заказов из нового ответа
+        const newOrderIds = new Set(
+          newStore.orders.map((order: any) => order.id)
+        );
+
+        // Из кеша оставляем заказы, state которых не ARCHIVED и которых нет в новом ответе
+        const preservedOrders = cachedStore.orders.filter((order: any) => {
+          return (
+            order.attributes.state !== "ARCHIVED" && !newOrderIds.has(order.id)
+          );
+        });
+
+        // Возвращаем магазин с объединёнными заказами
+        return {
+          ...newStore,
+          orders: [...newStore.orders, ...preservedOrders],
+        };
+      });
+
+      const mergedData = { ...currentOrders, stores: mergedStores };
+      setCachedCurrentOrders(mergedData);
+    } else if (currentOrders) {
+      // Если в кеше ещё нет данных – просто сохраняем новый ответ
+      setCachedCurrentOrders(currentOrders);
+    }
+  }, [currentOrders]);
+
+  console.log(currentOrders);
+
   if (!isAuthenticated) {
     return <LoginPage />;
   }
