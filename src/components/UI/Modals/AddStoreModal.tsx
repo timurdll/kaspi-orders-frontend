@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Dialog } from "@headlessui/react";
-import { useAddStoreMutation } from "../redux/api";
+import { useAddStoreMutation } from "../../../redux/api";
 
 interface AddStoreModalProps {
   isOpen: boolean;

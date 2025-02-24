@@ -1,6 +1,6 @@
 // src/components/Header.tsx
 import React from "react";
-import { BurgerMenuTabs, TabType } from "./BurgerMenuTabs";
+import { BurgerMenuTabs, TabType } from "./UI/Tabs/BurgerMenuTabs";
 
 interface HeaderProps {
   onAddStore: () => void;

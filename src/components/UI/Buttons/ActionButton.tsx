@@ -1,4 +1,4 @@
-import { KaspiOrder } from "../../types/orders";
+import { KaspiOrder } from "../../../types/orders";
 
 interface ActionButtonProps {
   attributes: KaspiOrder["attributes"];

@@ -2,10 +2,10 @@
 import React, { useState } from "react";
 import { Store } from "../types/orders";
 import { useDeleteStoreMutation } from "../redux/api";
-import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
+import { DeleteConfirmationModal } from "./UI/Modals/DeleteConfirmationModal";
 import { StoreHeader } from "./StoreHeader";
 import { OrdersList } from "./OrdersList";
-import { OrdersDeliveryDayTabs } from "./OrdersDeliveryDayTabs";
+import { OrdersDeliveryDayTabs } from "./UI/Tabs/OrdersDeliveryDayTabs";
 
 interface StoreOrdersProps {
   store: Store;

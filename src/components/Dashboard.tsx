@@ -1,5 +1,4 @@
-// src/components/Dashboard.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   useGetOrdersQuery,
   useGetArchiveOrdersQuery,
@@ -10,13 +9,14 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../redux/store";
 import { logout } from "../redux/authSlice";
 import { Header } from "./Header";
-import { OrdersTypeTabs, TabType } from "./OrdersTypeTabs";
+import { OrdersTypeTabs, TabType } from "./UI/Tabs/OrdersTypeTabs";
 import { StoreOrdersList } from "./StoreOrdersList";
-import { Loader } from "./Loader";
-import { AddStoreModal } from "./AddStoreModal";
-import { CopyNotificationProvider } from "./GlobalCopyNotification";
+import { Loader } from "./UI/Loader";
+import { CopyNotificationProvider } from "./UI/GlobalCopyNotification";
 import { LoginPage } from "./LoginPage";
-import { ErrorBoundary } from "./ErrorBoundary";
+import { ErrorBoundary } from "./UI/Errors/ErrorBoundary";
+import { AddStoreModal } from "./UI/Modals/AddStoreModal";
+import { useCachedData } from "./Hooks/useCachedData";
 
 interface AggregatedCounts {
   todayCount: number;
@@ -36,22 +36,20 @@ const aggregateCounts = (ordersData: any): AggregatedCounts => {
     0
   );
   const cutoffTime = cutoff.getTime();
-
   let todayCount = 0;
   let totalCount = 0;
 
-  ordersData.stores?.forEach((store: any) => {
-    if (store.orders) {
+  ordersData?.stores?.forEach((store: any) => {
+    if (store?.orders) {
       store.orders.forEach((order: any) => {
+        if (!order || !order.attributes) return;
         totalCount++;
         const orderTime = order.attributes.creationDate;
         if (order.attributes.isKaspiDelivery) {
-          if (order.attributes.kaspiDelivery.express) {
+          if (order.attributes.kaspiDelivery?.express) {
             todayCount++;
-          } else {
-            if (orderTime < cutoffTime) {
-              todayCount++;
-            }
+          } else if (orderTime < cutoffTime) {
+            todayCount++;
           }
         } else {
           todayCount++;
@@ -59,9 +57,16 @@ const aggregateCounts = (ordersData: any): AggregatedCounts => {
       });
     }
   });
+  return { todayCount, tomorrowCount: totalCount - todayCount, totalCount };
+};
 
-  const tomorrowCount = totalCount - todayCount;
-  return { todayCount, tomorrowCount, totalCount };
+const getSafeStores = (data: any) => {
+  if (!data?.stores) return [];
+  return data.stores.map((store: any) => ({
+    ...store,
+    orders: store.orders || [],
+    storeName: store.storeName || "Неизвестный магазин",
+  }));
 };
 
 export const Dashboard: React.FC = () => {
@@ -75,121 +80,43 @@ export const Dashboard: React.FC = () => {
   const { data: currentOrders, isLoading: currentLoading } = useGetOrdersQuery(
     undefined,
     {
-      pollingInterval: 60000,
+      pollingInterval: 300000,
       skip: !isAuthenticated,
     }
   );
-
   const { data: archiveOrders, isLoading: archiveLoading } =
     useGetArchiveOrdersQuery(undefined, {
-      pollingInterval: 60000,
+      pollingInterval: 300000,
       skip: !isAuthenticated,
     });
-
   const { data: preOrders, isLoading: preOrdersLoading } = useGetPreOrdersQuery(
     undefined,
     {
-      pollingInterval: 60000,
+      pollingInterval: 300000,
       skip: !isAuthenticated,
     }
   );
-
   const { data: returnedOrders, isLoading: returnedLoading } =
     useGetReturnedOrdersQuery(undefined, {
-      pollingInterval: 60000,
+      pollingInterval: 300000,
       skip: !isAuthenticated,
     });
 
-  const [cachedCurrentOrders, setCachedCurrentOrders] = useState<any>(null);
-  useEffect(() => {
-    if (currentOrders) setCachedCurrentOrders(currentOrders);
-  }, [currentOrders]);
+  // console.log("1:", returnedOrders);
 
-  const [cachedArchiveOrders, setCachedArchiveOrders] = useState<any>(null);
-  useEffect(() => {
-    if (archiveOrders) setCachedArchiveOrders(archiveOrders);
-  }, [archiveOrders]);
-
-  const [cachedPreOrders, setCachedPreOrders] = useState<any>(null);
-  useEffect(() => {
-    if (preOrders) setCachedPreOrders(preOrders);
-  }, [preOrders]);
-
-  const [cachedReturnedOrders, setCachedReturnedOrders] = useState<any>(null);
-  useEffect(() => {
-    if (returnedOrders) setCachedReturnedOrders(returnedOrders);
-  }, [returnedOrders]);
-
-  useEffect(() => {
-    if (
-      currentOrders &&
-      currentOrders.stores &&
-      currentOrders.stores.length > 0 &&
-      cachedCurrentOrders &&
-      cachedCurrentOrders.stores
-    ) {
-      const mergedStores = currentOrders.stores.map((newStore: any) => {
-        const cachedStore = cachedCurrentOrders.stores.find(
-          (s: any) => s.storeName === newStore.storeName
-        );
-        if (!cachedStore) return newStore;
-
-        // Если orders отсутствуют, используем пустой массив
-        const newOrders = newStore.orders || [];
-        const cachedOrders = cachedStore.orders || [];
-
-        // Собираем ID заказов из нового ответа (игнорируем null)
-        const newOrderIds = new Set(
-          newOrders.map((order: any) => order?.id).filter(Boolean)
-        );
-
-        // Из кеша оставляем заказы, state которых не "ARCHIVED" и которых нет в новом ответе
-        const preservedOrders = cachedOrders.filter((order: any) => {
-          return (
-            order &&
-            order.attributes &&
-            order.attributes.state !== "ARCHIVED" &&
-            !newOrderIds.has(order.id)
-          );
-        });
-
-        return {
-          ...newStore,
-          orders: [...newOrders, ...preservedOrders],
-        };
-      });
-
-      const mergedData = { ...currentOrders, stores: mergedStores };
-      setCachedCurrentOrders(mergedData);
-    } else if (currentOrders) {
-      setCachedCurrentOrders(currentOrders);
-    }
-  }, [currentOrders]);
-
-  const safeAggregateData = (data: any): AggregatedCounts => {
-    if (!data?.stores) {
-      return { todayCount: 0, tomorrowCount: 0, totalCount: 0 };
-    }
-    return aggregateCounts(data);
-  };
-
-  // Safe store access
-  const getSafeStores = (data: any) => {
-    if (!data?.stores) return [];
-    return data.stores.map((store: any) => ({
-      ...store,
-      orders: store.orders || [],
-      storeName: store.storeName || "Неизвестный магазин",
-    }));
-  };
-
-  console.log(currentOrders);
+  // Используем кастомный хук для каждого типа заказов отдельно
+  const cachedCurrentOrders = useCachedData(currentOrders);
+  const cachedArchiveOrders = useCachedData(archiveOrders);
+  const cachedPreOrders = useCachedData(preOrders);
+  const cachedReturnedOrders = useCachedData(returnedOrders);
+  // console.log("2:", returnedOrders);
 
   if (!isAuthenticated) {
     return <LoginPage />;
   }
 
-  let data, isLoading;
+  let data: any,
+    isLoading: boolean = false;
   if (tab === "current") {
     data = currentOrders || cachedCurrentOrders;
     isLoading = currentLoading;
@@ -206,63 +133,45 @@ export const Dashboard: React.FC = () => {
 
   if (isLoading && !data) return <Loader />;
 
-  // const currentCounts = currentOrders ? aggregateCounts(currentOrders) : null;
-  // const archiveCounts = archiveOrders ? aggregateCounts(archiveOrders) : null;
-  // const preOrdersCounts = preOrders ? aggregateCounts(preOrders) : null;
-  // const returnedCounts = returnedOrders
-  //   ? aggregateCounts(returnedOrders)
-  //   : null;
-
-  // const counts = {
-  //   current: currentCounts,
-  //   archive: archiveCounts,
-  //   preOrders: preOrdersCounts,
-  //   returned: returnedCounts,
-  // };
-
-  const handleLogout = () => {
-    dispatch(logout());
-  };
-
   return (
     <ErrorBoundary>
       <CopyNotificationProvider>
         <div className="container mx-auto px-4 py-8">
-          {/* Header включает бургер-меню (которая теперь отображается всегда) */}
           <Header
             onAddStore={() => setIsAddStoreModalOpen(true)}
-            onLogout={handleLogout}
+            onLogout={() => dispatch(logout())}
             activeTab={tab}
             onTabChange={setTab}
             counts={{
-              current: currentOrders ? safeAggregateData(currentOrders) : null,
-              archive: archiveOrders ? safeAggregateData(archiveOrders) : null,
-              preOrders: preOrders ? safeAggregateData(preOrders) : null,
+              current: currentOrders
+                ? aggregateCounts(currentOrders)
+                : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
+              archive: archiveOrders
+                ? aggregateCounts(archiveOrders)
+                : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
+              preOrders: preOrders
+                ? aggregateCounts(preOrders)
+                : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
               returned: returnedOrders
-                ? safeAggregateData(returnedOrders)
-                : null,
+                ? aggregateCounts(returnedOrders)
+                : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
             }}
           />
-          {/* Десктопное представление – вкладки */}
           <div className="hidden md:flex mb-6">
             <OrdersTypeTabs
               activeTab={tab}
               onTabChange={setTab}
               counts={{
-                current: currentOrders
-                  ? safeAggregateData(currentOrders)
-                  : null,
-                archive: archiveOrders
-                  ? safeAggregateData(archiveOrders)
-                  : null,
-                preOrders: preOrders ? safeAggregateData(preOrders) : null,
+                current: currentOrders ? aggregateCounts(currentOrders) : null,
+                archive: archiveOrders ? aggregateCounts(archiveOrders) : null,
+                preOrders: preOrders ? aggregateCounts(preOrders) : null,
                 returned: returnedOrders
-                  ? safeAggregateData(returnedOrders)
+                  ? aggregateCounts(returnedOrders)
                   : null,
               }}
             />
           </div>
-          {data && <StoreOrdersList stores={getSafeStores(data)} type={tab} />}{" "}
+          {data && <StoreOrdersList stores={getSafeStores(data)} type={tab} />}
           <AddStoreModal
             isOpen={isAddStoreModalOpen}
             onClose={() => setIsAddStoreModalOpen(false)}

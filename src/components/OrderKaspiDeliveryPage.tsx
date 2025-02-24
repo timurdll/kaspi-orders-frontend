@@ -5,7 +5,7 @@ import {
   useSendSecurityCodeMutation,
   useCompleteOrderMutation,
 } from "../redux/api";
-import { Loader } from "./Loader";
+import { Loader } from "./UI/Loader";
 import { AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 
 // Простой компонент для уведомлений

@@ -1,7 +1,7 @@
 // src/components/OrderHeader.tsx
 import React from "react";
-import { CopyButton } from "./CopyButton";
-import { formatDate } from "../../utils/format";
+import { CopyButton } from "../Buttons/CopyButton";
+import { formatDate } from "../../../utils/format";
 
 interface OrderHeaderProps {
   code: string;

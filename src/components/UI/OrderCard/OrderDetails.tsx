@@ -1,6 +1,6 @@
 // src/components/OrderDetails.tsx
 import React from "react";
-import { CopyButton } from "./CopyButton";
+import { CopyButton } from "../Buttons/CopyButton";
 
 interface OrderDetailsProps {
   customer: {

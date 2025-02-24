@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { StoreOrders } from "./StoreOrders";
-import { StoreTabs } from "./StoreTabs";
+import { StoreTabs } from "./UI/Tabs/StoreTabs";
 
 interface StoreOrdersListProps {
   stores: any[];

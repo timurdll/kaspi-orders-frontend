@@ -1,6 +1,6 @@
 // src/components/OrdersList.tsx
 import React from "react";
-import { OrderCard } from "./OrderCard";
+import { OrderCard } from "./UI/OrderCard/OrderCard";
 
 interface OrdersListProps {
   orders: any[]; // замените any на ваш тип заказа (например, KaspiOrder[])
