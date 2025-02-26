@@ -1,0 +1,29 @@
+name: Deploy to Synology
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Deploy changes via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SYNOLGY_HOST }}
+          username: ${{ secrets.SYNOLGY_USER }}
+          key: ${{ secrets.SYNOLGY_SSH_KEY }}
+          port: ${{ secrets.SYNOLGY_SSH_PORT }}
+          script: |
+            # Переходим в директорию с проектом на Synology
+            cd /volume1/Development/kaspi-composer
+            # Обновляем репозиторий (убедитесь, что на сервере настроен Git с нужными ключами)
+            git pull origin dev
+            # Пересобираем и перезапускаем контейнеры с помощью docker-compose
+            sudo docker-compose up -d --build
