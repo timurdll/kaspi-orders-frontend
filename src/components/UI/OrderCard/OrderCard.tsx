@@ -49,7 +49,10 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     attributes?.kaspiDelivery?.waybill || null
   );
   const [securityCode, setSecurityCode] = useState<string>("");
-  const [showCodeInput, setShowCodeInput] = useState<boolean>(false);
+  const [showCodeInput, setShowCodeInput] = useState<boolean>(() => {
+    // При инициализации проверяем, был ли код уже отправлен для этого заказа
+    return localStorage.getItem(`codeSent_${orderId}`) === "true";
+  });
   const [error, setError] = useState<string | null>(null);
 
   const [sendSecurityCode] = useSendSecurityCodeMutation();
@@ -60,10 +63,15 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     useLazyGenerateWaybillQuery();
 
   useEffect(() => {
-    // Безопасно получаем данные через optional chaining
+    if (localStorage.getItem(`codeSent_${orderId}`) === "true") {
+      setShowCodeInput(true);
+    }
+  }, [orderId]);
+
+  useEffect(() => {
     setInvoiceLink(attributes?.kaspiDelivery?.waybill || null);
     setCardStatus(getInitialStatus(order));
-    setShowCodeInput(false);
+    // Убрали сброс showCodeInput, чтобы не терять состояние отправленного кода
     setSecurityCode("");
     setError(null);
   }, [order, attributes?.kaspiDelivery]);
@@ -76,19 +84,15 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       await sendSecurityCode({
         orderId,
         storeName,
-        orderCode: attributes?.code,
+        orderCode: order.attributes?.code,
       }).unwrap();
-      setShowCodeInput(true);
-      // Для DELIVERY_LOCAL и DELIVERY_PICKUP оставляем статус "new"
-      if (
-        attributes?.deliveryMode !== "DELIVERY_LOCAL" &&
-        attributes?.deliveryMode !== "DELIVERY_PICKUP"
-      ) {
-        setCardStatus("code_sent");
-      }
     } catch (error) {
-      console.error("Error sending security code:", error);
-      setError("Ошибка при отправке кода");
+      console.error("Ошибка при отправке кода:", error);
+      setError("Ошибка при отправке кода. Попробуйте ввести полученный код.");
+    } finally {
+      // Фиксируем, что код уже отправлен – независимо от результата запроса
+      setShowCodeInput(true);
+      localStorage.setItem(`codeSent_${orderId}`, "true");
     }
   };
 

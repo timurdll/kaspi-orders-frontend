@@ -14,7 +14,7 @@ import { StoreOrdersList } from "./StoreOrdersList";
 import { Loader } from "./UI/Loader";
 import { CopyNotificationProvider } from "./UI/GlobalCopyNotification";
 import { LoginPage } from "./LoginPage";
-// import { ErrorBoundary } from "./UI/Errors/ErrorBoundary";
+import { ErrorBoundary } from "./UI/Errors/ErrorBoundary";
 import { AddStoreModal } from "./UI/Modals/AddStoreModal";
 import { useCachedData } from "./Hooks/useCachedData";
 
@@ -134,46 +134,50 @@ export const Dashboard: React.FC = () => {
   if (isLoading && !data) return <Loader />;
 
   return (
-    <CopyNotificationProvider>
-      <div className="container mx-auto px-4 py-8">
-        <Header
-          onAddStore={() => setIsAddStoreModalOpen(true)}
-          onLogout={() => dispatch(logout())}
-          activeTab={tab}
-          onTabChange={setTab}
-          counts={{
-            current: currentOrders
-              ? aggregateCounts(currentOrders)
-              : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
-            archive: archiveOrders
-              ? aggregateCounts(archiveOrders)
-              : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
-            preOrders: preOrders
-              ? aggregateCounts(preOrders)
-              : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
-            returned: returnedOrders
-              ? aggregateCounts(returnedOrders)
-              : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
-          }}
-        />
-        <div className="hidden md:flex mb-6">
-          <OrdersTypeTabs
+    <ErrorBoundary>
+      <CopyNotificationProvider>
+        <div className="container mx-auto px-4 py-8">
+          <Header
+            onAddStore={() => setIsAddStoreModalOpen(true)}
+            onLogout={() => dispatch(logout())}
             activeTab={tab}
             onTabChange={setTab}
             counts={{
-              current: currentOrders ? aggregateCounts(currentOrders) : null,
-              archive: archiveOrders ? aggregateCounts(archiveOrders) : null,
-              preOrders: preOrders ? aggregateCounts(preOrders) : null,
-              returned: returnedOrders ? aggregateCounts(returnedOrders) : null,
+              current: currentOrders
+                ? aggregateCounts(currentOrders)
+                : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
+              archive: archiveOrders
+                ? aggregateCounts(archiveOrders)
+                : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
+              preOrders: preOrders
+                ? aggregateCounts(preOrders)
+                : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
+              returned: returnedOrders
+                ? aggregateCounts(returnedOrders)
+                : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
             }}
           />
+          <div className="hidden md:flex mb-6">
+            <OrdersTypeTabs
+              activeTab={tab}
+              onTabChange={setTab}
+              counts={{
+                current: currentOrders ? aggregateCounts(currentOrders) : null,
+                archive: archiveOrders ? aggregateCounts(archiveOrders) : null,
+                preOrders: preOrders ? aggregateCounts(preOrders) : null,
+                returned: returnedOrders
+                  ? aggregateCounts(returnedOrders)
+                  : null,
+              }}
+            />
+          </div>
+          {data && <StoreOrdersList stores={getSafeStores(data)} type={tab} />}
+          <AddStoreModal
+            isOpen={isAddStoreModalOpen}
+            onClose={() => setIsAddStoreModalOpen(false)}
+          />
         </div>
-        {data && <StoreOrdersList stores={getSafeStores(data)} type={tab} />}
-        <AddStoreModal
-          isOpen={isAddStoreModalOpen}
-          onClose={() => setIsAddStoreModalOpen(false)}
-        />
-      </div>
-    </CopyNotificationProvider>
+      </CopyNotificationProvider>
+    </ErrorBoundary>
   );
 };
