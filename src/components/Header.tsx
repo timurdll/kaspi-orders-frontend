@@ -32,8 +32,8 @@ export const Header: React.FC<HeaderProps> = ({
           <img src={Logo} alt="App Logo" className="h-8" />
         </div>
 
-        {/* Вкладки заказов - компактный вид */}
-        <div className="flex items-center">
+        {/* Вкладки заказов (видны на экранах md и выше) */}
+        <div className="hidden md:flex items-center">
           <OrdersTypeTabs
             activeTab={activeTab}
             onTabChange={onTabChange}
@@ -41,8 +41,8 @@ export const Header: React.FC<HeaderProps> = ({
           />
         </div>
 
-        {/* Бургер-меню */}
-        <div className="flex-shrink-0 flex items-center">
+        {/* Бургер-меню (видно на экранах меньше md) */}
+        <div className="flex md:hidden items-center">
           <BurgerMenuTabs
             activeTab={activeTab}
             onTabChange={onTabChange}

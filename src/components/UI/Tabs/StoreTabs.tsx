@@ -20,7 +20,7 @@ export const StoreTabs: React.FC<StoreTabsProps> = ({
 
   const getButtonClasses = (storeName: string) => {
     const active = isActive(storeName);
-    return `relative inline-block border border-[#1869FF] ${active ? "ring-2 ring-[#1869FF]" : ""}`;
+    return `relative inline-block flex-shrink-0 border border-[#1869FF] ${active ? "ring-2 ring-[#1869FF]" : ""}`;
   };
 
   const getLeftPartClasses = (storeName: string) => {
@@ -49,14 +49,14 @@ export const StoreTabs: React.FC<StoreTabsProps> = ({
             <div className={getLeftPartClasses(store.storeName)} />
             <div className={getRightPartClasses(store.storeName)} />
           </div>
-          {/* Контент с паддингами 15px */}
-          <div className="relative z-10 flex">
+          {/* Контент с паддингами 15px и запретом переноса текста */}
+          <div className="relative z-10 flex whitespace-nowrap">
             <span
               className={`px-[15px] py-[8px] font-medium ${getTextClasses(store.storeName)}`}
             >
               {store.storeName}
             </span>
-            <span className={`px-[15px] py-[8px] font-bold text-white`}>
+            <span className="px-[15px] py-[8px] font-bold text-white">
               {store.orders?.length || 0}
             </span>
           </div>

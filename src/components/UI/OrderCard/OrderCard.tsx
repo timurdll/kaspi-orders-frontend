@@ -135,7 +135,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         }}
       >
         <motion.div
-          className="absolute h-10 flex items-center justify-center text-white font-semibold rounded"
+          className="absolute h-10 flex items-center justify-center text-white font-semibold"
           style={{ width: RECT_WIDTH }}
           animate={{
             x: offsetX,
