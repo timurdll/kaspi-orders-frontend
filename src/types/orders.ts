@@ -62,6 +62,7 @@ export interface KaspiOrderAttributes {
   assembled: boolean;
   approvedByBankDate: number;
   status: string;
+  customStatus: string;
   customer: KaspiCustomer;
   deliveryCost: number;
 }
@@ -117,10 +118,10 @@ export interface OrdersResponse {
   };
 }
 
-export type OrderStatus =
-  | "new"
-  | "invoice"
-  | "assembled"
-  | "code_sent"
-  | "completed"
-  | "transferred";
+export type OrderCustomStatus =
+  | "NEW"
+  | "ON_SHIPMENT"
+  | "ON_PACKAGING"
+  | "PACKAGED"
+  | "ON_DELIVERY"
+  | "DELIVERED";

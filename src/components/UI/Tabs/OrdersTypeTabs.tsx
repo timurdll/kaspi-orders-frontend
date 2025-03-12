@@ -1,4 +1,3 @@
-// src/components/OrdersTypeTabs.tsx
 import React from "react";
 
 // Обновляем тип вкладок, добавляя 'returned'
@@ -20,62 +19,101 @@ export const OrdersTypeTabs: React.FC<OrdersTabsProps> = ({
   onTabChange,
   counts,
 }) => {
-  // Класс "hidden md:flex" скроет вкладки на малых экранах (в режиме бургер-меню)
+  const getButtonClasses = (tabName: TabType) => {
+    const isActive = activeTab === tabName;
+    return `
+      relative inline-block border border-[#1869FF]
+      ${isActive ? "ring-2 ring-[#1869FF]" : ""}
+    `;
+  };
+
+  const getLeftPartClasses = (tabName: TabType) => {
+    const isActive = activeTab === tabName;
+    // Левая часть: активный — фон #1869FF, неактивный — фон черный
+    return `
+      absolute inset-0 flex items-center
+      ${isActive ? "bg-[#1869FF]" : "bg-black"}
+    `;
+  };
+
+  const getRightPartClasses = (tabName: TabType) => {
+    const isActive = activeTab === tabName;
+    // Правая часть: активный — фон #0E3F99, неактивный — фон #1869FF
+    return `
+      absolute inset-0 clip-path-right flex items-center justify-end
+      ${isActive ? "bg-[#0E3F99]" : "bg-[#1869FF]"}
+    `;
+  };
+
+  // Определяем стили для текста в зависимости от активности
+  const getTextClasses = (tabName: TabType) =>
+    activeTab === tabName ? "text-white" : "text-[#1869FF]";
+
   return (
-    <div className="hidden md:flex space-x-4 mb-6">
+    <div className="flex space-x-4">
+      {/* Кнопка "Заказы" */}
       <button
-        className={`relative px-4 py-2 rounded-md ${
-          activeTab === "current" ? "bg-blue-500 text-white" : "bg-gray-200"
-        }`}
+        className={getButtonClasses("current")}
         onClick={() => onTabChange("current")}
       >
-        Заказы
-        {counts.current && (
-          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-            {counts.current.todayCount}
+        {/* Фоновые слои */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className={getLeftPartClasses("current")} />
+          <div className={getRightPartClasses("current")} />
+        </div>
+        {/* Контент с отступами */}
+        <div className="relative z-10 flex">
+          <span
+            className={`px-[15px] py-[8px] font-medium ${getTextClasses("current")}`}
+          >
+            Заказы
           </span>
-        )}
+          <span className={`px-[15px] py-[8px] font-bold text-white`}>
+            {counts.current ? counts.current.todayCount : 0}
+          </span>
+        </div>
       </button>
+
+      {/* Кнопка "Предзаказы" */}
       <button
-        className={`relative px-4 py-2 rounded-md ${
-          activeTab === "pre-orders" ? "bg-blue-500 text-white" : "bg-gray-200"
-        }`}
+        className={getButtonClasses("pre-orders")}
         onClick={() => onTabChange("pre-orders")}
       >
-        Предзаказы
-        {counts.preOrders && (
-          <span className="absolute -top-2 -right-2 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-            {counts.preOrders.totalCount}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className={getLeftPartClasses("pre-orders")} />
+          <div className={getRightPartClasses("pre-orders")} />
+        </div>
+        <div className="relative z-10 flex">
+          <span
+            className={`px-[15px] py-[8px] font-medium ${getTextClasses("pre-orders")}`}
+          >
+            Предзаказы
           </span>
-        )}
+          <span className={`px-[15px] py-[8px] font-bold text-white`}>
+            {counts.preOrders ? counts.preOrders.totalCount : 0}
+          </span>
+        </div>
       </button>
 
+      {/* Кнопка "Возврат" */}
       <button
-        className={`relative px-4 py-2 rounded-md ${
-          activeTab === "archive" ? "bg-blue-500 text-white" : "bg-gray-200"
-        }`}
-        onClick={() => onTabChange("archive")}
-      >
-        Архивные заказы
-        {counts.archive && (
-          <span className="absolute -top-2 -right-2 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-            {counts.archive.totalCount}
-          </span>
-        )}
-      </button>
-
-      <button
-        className={`relative px-4 py-2 rounded-md ${
-          activeTab === "returned" ? "bg-blue-500 text-white" : "bg-gray-200"
-        }`}
+        className={getButtonClasses("returned")}
         onClick={() => onTabChange("returned")}
       >
-        Возвраты
-        {counts.returned && (
-          <span className="absolute -top-2 -right-2 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-            {counts.returned.totalCount}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className={getLeftPartClasses("returned")} />
+          <div className={getRightPartClasses("returned")} />
+        </div>
+        <div className="relative z-10 flex">
+          <span
+            className={`px-[15px] py-[8px] font-medium ${getTextClasses("returned")}`}
+          >
+            Возврат
           </span>
-        )}
+          <span className={`px-[15px] py-[8px] font-bold text-white`}>
+            {counts.returned ? counts.returned.totalCount : 0}
+          </span>
+        </div>
       </button>
     </div>
   );

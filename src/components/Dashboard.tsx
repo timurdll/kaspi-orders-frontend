@@ -1,15 +1,9 @@
 import React, { useState } from "react";
-import {
-  useGetOrdersQuery,
-  useGetArchiveOrdersQuery,
-  useGetPreOrdersQuery,
-  useGetReturnedOrdersQuery,
-} from "../redux/api";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../redux/store";
 import { logout } from "../redux/authSlice";
 import { Header } from "./Header";
-import { OrdersTypeTabs, TabType } from "./UI/Tabs/OrdersTypeTabs";
+import { TabType } from "./UI/Tabs/OrdersTypeTabs";
 import { StoreOrdersList } from "./StoreOrdersList";
 import { Loader } from "./UI/Loader";
 import { CopyNotificationProvider } from "./UI/GlobalCopyNotification";
@@ -17,6 +11,13 @@ import { LoginPage } from "./LoginPage";
 import { ErrorBoundary } from "./UI/Errors/ErrorBoundary";
 import { AddStoreModal } from "./UI/Modals/AddStoreModal";
 import { useCachedData } from "./Hooks/useCachedData";
+import {
+  useGetArchiveOrdersQuery,
+  useGetOrdersQuery,
+  useGetPreOrdersQuery,
+  useGetReturnedOrdersQuery,
+} from "../redux/api/api";
+// import socket from "../socket";
 
 interface AggregatedCounts {
   todayCount: number;
@@ -80,36 +81,41 @@ export const Dashboard: React.FC = () => {
   const { data: currentOrders, isLoading: currentLoading } = useGetOrdersQuery(
     undefined,
     {
-      pollingInterval: 300000,
+      pollingInterval: 30000,
       skip: !isAuthenticated,
+      refetchOnMountOrArgChange: true,
+      refetchOnReconnect: true,
     }
   );
   const { data: archiveOrders, isLoading: archiveLoading } =
     useGetArchiveOrdersQuery(undefined, {
-      pollingInterval: 300000,
+      pollingInterval: 30000,
       skip: !isAuthenticated,
+      refetchOnMountOrArgChange: true,
+      refetchOnReconnect: true,
     });
   const { data: preOrders, isLoading: preOrdersLoading } = useGetPreOrdersQuery(
     undefined,
     {
-      pollingInterval: 300000,
+      pollingInterval: 30000,
       skip: !isAuthenticated,
+      refetchOnMountOrArgChange: true,
+      refetchOnReconnect: true,
     }
   );
   const { data: returnedOrders, isLoading: returnedLoading } =
     useGetReturnedOrdersQuery(undefined, {
       pollingInterval: 300000,
       skip: !isAuthenticated,
+      refetchOnMountOrArgChange: true,
+      refetchOnReconnect: true,
     });
-
-  // console.log("1:", returnedOrders);
 
   // Используем кастомный хук для каждого типа заказов отдельно
   const cachedCurrentOrders = useCachedData(currentOrders);
   const cachedArchiveOrders = useCachedData(archiveOrders);
   const cachedPreOrders = useCachedData(preOrders);
   const cachedReturnedOrders = useCachedData(returnedOrders);
-  // console.log("2:", returnedOrders);
 
   if (!isAuthenticated) {
     return <LoginPage />;
@@ -133,44 +139,47 @@ export const Dashboard: React.FC = () => {
 
   if (isLoading && !data) return <Loader />;
 
+  // useEffect(() => {
+  //   // Set up WebSocket listeners
+  //   socket.on("orderStatusUpdate", (orderId: number, newStatus: string) => {
+  //     console.log(`Статус заказа обновлен: Заказ ${orderId} -> ${newStatus}`);
+  //     refetch(); // Refetch data when an order status updates
+  //   });
+
+  //   return () => {
+  //     socket.off("orderStatusUpdate");
+  //   };
+  // }, []);
+
+  console.log(currentOrders);
+
   return (
     <ErrorBoundary>
       <CopyNotificationProvider>
-        <div className="container mx-auto px-4 py-8">
-          <Header
-            onAddStore={() => setIsAddStoreModalOpen(true)}
-            onLogout={() => dispatch(logout())}
-            activeTab={tab}
-            onTabChange={setTab}
-            counts={{
-              current: currentOrders
-                ? aggregateCounts(currentOrders)
-                : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
-              archive: archiveOrders
-                ? aggregateCounts(archiveOrders)
-                : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
-              preOrders: preOrders
-                ? aggregateCounts(preOrders)
-                : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
-              returned: returnedOrders
-                ? aggregateCounts(returnedOrders)
-                : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
-            }}
-          />
-          <div className="hidden md:flex mb-6">
-            <OrdersTypeTabs
-              activeTab={tab}
-              onTabChange={setTab}
-              counts={{
-                current: currentOrders ? aggregateCounts(currentOrders) : null,
-                archive: archiveOrders ? aggregateCounts(archiveOrders) : null,
-                preOrders: preOrders ? aggregateCounts(preOrders) : null,
-                returned: returnedOrders
-                  ? aggregateCounts(returnedOrders)
-                  : null,
-              }}
-            />
-          </div>
+        {/* Header рендерится отдельно, чтобы его фон занимал всю ширину */}
+        <Header
+          onAddStore={() => setIsAddStoreModalOpen(true)}
+          onLogout={() => dispatch(logout())}
+          activeTab={tab}
+          onTabChange={setTab}
+          counts={{
+            current: currentOrders
+              ? aggregateCounts(currentOrders)
+              : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
+            archive: archiveOrders
+              ? aggregateCounts(archiveOrders)
+              : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
+            preOrders: preOrders
+              ? aggregateCounts(preOrders)
+              : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
+            returned: returnedOrders
+              ? aggregateCounts(returnedOrders)
+              : { todayCount: 0, tomorrowCount: 0, totalCount: 0 },
+          }}
+        />
+
+        {/* Основной контент с ограниченной шириной */}
+        <div className="max-w-[1440px] mx-auto px-4 py-8">
           {data && <StoreOrdersList stores={getSafeStores(data)} type={tab} />}
           <AddStoreModal
             isOpen={isAddStoreModalOpen}

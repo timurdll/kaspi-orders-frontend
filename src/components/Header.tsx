@@ -1,6 +1,8 @@
 // src/components/Header.tsx
 import React from "react";
-import { BurgerMenuTabs, TabType } from "./UI/Tabs/BurgerMenuTabs";
+import { BurgerMenuTabs } from "./UI/Tabs/BurgerMenuTabs";
+import Logo from "../assets/logo-white.svg";
+import { OrdersTypeTabs, TabType } from "./UI/Tabs/OrdersTypeTabs";
 
 interface HeaderProps {
   onAddStore: () => void;
@@ -23,16 +25,33 @@ export const Header: React.FC<HeaderProps> = ({
   counts,
 }) => {
   return (
-    <div className="flex justify-between items-center mb-6">
-      <h1 className="text-2xl font-bold">Заказы Kaspi</h1>
-      {/* Бургер-меню отображается всегда */}
-      <BurgerMenuTabs
-        activeTab={activeTab}
-        onTabChange={onTabChange}
-        counts={counts}
-        onAddStore={onAddStore}
-        onLogout={onLogout}
-      />
-    </div>
+    <header className="bg-black w-full border-b border-gray-200">
+      <div className="max-w-[1440px] mx-auto flex items-center justify-between py-4 px-4">
+        {/* Логотип */}
+        <div className="flex-shrink-0 flex items-center">
+          <img src={Logo} alt="App Logo" className="h-8" />
+        </div>
+
+        {/* Вкладки заказов - компактный вид */}
+        <div className="flex items-center">
+          <OrdersTypeTabs
+            activeTab={activeTab}
+            onTabChange={onTabChange}
+            counts={counts}
+          />
+        </div>
+
+        {/* Бургер-меню */}
+        <div className="flex-shrink-0 flex items-center">
+          <BurgerMenuTabs
+            activeTab={activeTab}
+            onTabChange={onTabChange}
+            counts={counts}
+            onAddStore={onAddStore}
+            onLogout={onLogout}
+          />
+        </div>
+      </div>
+    </header>
   );
 };

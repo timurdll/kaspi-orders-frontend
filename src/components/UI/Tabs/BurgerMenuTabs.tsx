@@ -1,7 +1,8 @@
-import React, { useState } from "react";
-import { Menu, X } from "lucide-react";
-
-export type TabType = "current" | "archive" | "pre-orders" | "returned";
+import React, { useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { TabType } from "./OrdersTypeTabs";
+import BurgerIcon from "../../../assets/burger.svg";
+import { useOnClickOutside } from "../../Hooks/useOnClickOutside";
 
 interface BurgerMenuTabsProps {
   activeTab: TabType;
@@ -23,73 +24,152 @@ export const BurgerMenuTabs: React.FC<BurgerMenuTabsProps> = ({
   onAddStore,
   onLogout,
 }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const handleTabClick = (tab: TabType) => {
-    onTabChange(tab);
-    setMenuOpen(false);
+  const toggleMenu = () => {
+    setIsOpen((prev) => !prev);
+  };
+
+  // Закрываем меню при клике вне
+  useOnClickOutside(menuRef, () => {
+    if (isOpen) {
+      setIsOpen(false);
+    }
+  });
+
+  const menuVariants = {
+    hidden: { x: "100%" },
+    visible: { x: 0 },
+    exit: { x: "100%" },
   };
 
   return (
     <div className="relative">
-      {/* Кнопка бургер-меню */}
       <button
-        onClick={() => setMenuOpen(!menuOpen)}
-        className="p-2 rounded-full hover:bg-gray-200 transition-colors focus:outline-none"
+        onClick={toggleMenu}
+        className="p-1 text-gray-800 focus:outline-none"
       >
-        {menuOpen ? <X size={24} /> : <Menu size={24} />}
+        <img src={BurgerIcon} alt="Menu" />
       </button>
 
-      {menuOpen && (
-        <div className="absolute top-14 w-64 bg-white shadow-lg rounded-lg overflow-hidden z-50 right-0">
-          <nav className="flex flex-col divide-y divide-gray-200">
-            {["current", "pre-orders", "archive", "returned"].map((tab) => (
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            ref={menuRef}
+            className="fixed top-0 right-0 h-screen w-56 bg-white shadow-lg z-50"
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={menuVariants}
+            transition={{ type: "tween", duration: 0.3 }}
+          >
+            <div
+              className="py-4 flex flex-col"
+              role="menu"
+              aria-orientation="vertical"
+            >
               <button
-                key={tab}
-                className={`px-4 py-3 text-left transition-all font-medium text-sm flex justify-between items-center ${
-                  activeTab === tab
-                    ? "bg-blue-500 text-white"
-                    : "hover:bg-gray-100 text-gray-800"
+                className={`w-full text-left px-4 py-2 text-sm ${
+                  activeTab === "current"
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-700"
                 }`}
-                onClick={() => handleTabClick(tab as TabType)}
+                onClick={() => {
+                  onTabChange("current");
+                  setIsOpen(false);
+                }}
               >
-                {tab === "current" && "Текущие заказы"}
-                {tab === "pre-orders" && "Предзаказы"}
-                {tab === "archive" && "Архивные заказы"}
-                {tab === "returned" && "Возвращённые заказы"}
-                {counts[tab as keyof typeof counts] && (
-                  <span className="ml-2 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                    {counts[tab as keyof typeof counts]?.totalCount}
+                Заказы
+                {counts.current && (
+                  <span className="ml-2 inline-block bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    {counts.current.todayCount}
                   </span>
                 )}
               </button>
-            ))}
-          </nav>
 
-          <div className="border-t border-gray-300 my-2" />
+              <button
+                className={`w-full text-left px-4 py-2 text-sm ${
+                  activeTab === "pre-orders"
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-700"
+                }`}
+                onClick={() => {
+                  onTabChange("pre-orders");
+                  setIsOpen(false);
+                }}
+              >
+                Предзаказы
+                {counts.preOrders && (
+                  <span className="ml-2 inline-block bg-gray-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    {counts.preOrders.totalCount}
+                  </span>
+                )}
+              </button>
 
-          <div className="p-4 flex flex-col gap-2">
-            <button
-              onClick={() => {
-                onAddStore();
-                setMenuOpen(false);
-              }}
-              className="w-full py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition"
-            >
-              Добавить магазин
-            </button>
-            <button
-              onClick={() => {
-                onLogout();
-                setMenuOpen(false);
-              }}
-              className="w-full py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
-            >
-              Выйти
-            </button>
-          </div>
-        </div>
-      )}
+              <button
+                className={`w-full text-left px-4 py-2 text-sm ${
+                  activeTab === "archive"
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-700"
+                }`}
+                onClick={() => {
+                  onTabChange("archive");
+                  setIsOpen(false);
+                }}
+              >
+                Архивные заказы
+                {counts.archive && (
+                  <span className="ml-2 inline-block bg-gray-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    {counts.archive.totalCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                className={`w-full text-left px-4 py-2 text-sm ${
+                  activeTab === "returned"
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-700"
+                }`}
+                onClick={() => {
+                  onTabChange("returned");
+                  setIsOpen(false);
+                }}
+              >
+                Возвраты
+                {counts.returned && (
+                  <span className="ml-2 inline-block bg-gray-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    {counts.returned.totalCount}
+                  </span>
+                )}
+              </button>
+
+              <hr className="my-1" />
+
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                onClick={() => {
+                  onAddStore();
+                  setIsOpen(false);
+                }}
+              >
+                Добавить магазин
+              </button>
+
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                onClick={() => {
+                  onLogout();
+                  setIsOpen(false);
+                }}
+              >
+                Выйти
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

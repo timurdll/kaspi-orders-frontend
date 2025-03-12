@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  useGetOrdersQuery,
-  useSendSecurityCodeMutation,
-  useCompleteOrderMutation,
-} from "../redux/api";
+
 import { Loader } from "./UI/Loader";
 import { AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import {
+  useCompleteOrderMutation,
+  useGetOrdersQuery,
+  useSendSecurityCodeMutation,
+} from "../redux/api/api";
 
 // Простой компонент для уведомлений
 const Notification = ({

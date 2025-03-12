@@ -45,10 +45,10 @@ export const OrdersDeliveryDayTabs: React.FC<OrdersTabsProps> = ({
     }).length || 0;
 
   return (
-    <div className="flex space-x-2 bg-gray-100 p-1 rounded-lg">
+    <div className="flex space-x-3 p-1 items-center justify-center">
       <button
         onClick={() => onTabChange("today")}
-        className={`relative px-4 py-2 rounded-md transition-all duration-300 ${
+        className={`relative px-4 py-2  transition-all duration-300 ${
           activeTab === "today"
             ? "bg-indigo-600 text-white shadow-md"
             : "text-gray-700 hover:bg-gray-200"
@@ -61,7 +61,7 @@ export const OrdersDeliveryDayTabs: React.FC<OrdersTabsProps> = ({
       </button>
       <button
         onClick={() => onTabChange("tomorrow")}
-        className={`relative px-4 py-2 rounded-md transition-all duration-300 ${
+        className={`relative px-4 py-2 transition-all duration-300 ${
           activeTab === "tomorrow"
             ? "bg-indigo-600 text-white shadow-md"
             : "text-gray-700 hover:bg-gray-200"

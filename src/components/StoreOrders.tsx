@@ -1,11 +1,10 @@
 // src/components/StoreOrders.tsx
 import React, { useState } from "react";
 import { Store } from "../types/orders";
-import { useDeleteStoreMutation } from "../redux/api";
 import { DeleteConfirmationModal } from "./UI/Modals/DeleteConfirmationModal";
-import { StoreHeader } from "./StoreHeader";
 import { OrdersList } from "./OrdersList";
 import { OrdersDeliveryDayTabs } from "./UI/Tabs/OrdersDeliveryDayTabs";
+import { useDeleteStoreMutation } from "../redux/api/api";
 
 interface StoreOrdersProps {
   store: Store;
@@ -77,19 +76,14 @@ export const StoreOrders: React.FC<StoreOrdersProps> = ({
   }
 
   return (
-    <div className="mb-6">
-      <StoreHeader
-        storeName={store.storeName}
-        ordersCount={store.orders?.length || 0}
-      >
-        {type === "current" && (
-          <OrdersDeliveryDayTabs
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            storeOrders={store.orders || []}
-          />
-        )}
-      </StoreHeader>
+    <div className="mb-6 border-2 border-blue-500 flex flex-col gap-4 p-4">
+      {type === "current" && (
+        <OrdersDeliveryDayTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          storeOrders={store.orders || []}
+        />
+      )}
       <OrdersList
         orders={ordersToDisplay}
         storeName={store.storeName}

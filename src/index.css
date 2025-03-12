@@ -3,3 +3,11 @@
 body {
   overflow-x: hidden;
 }
+
+.clip-path-left {
+  clip-path: polygon(0 0, 75% 0, 65% 100%, 0 100%);
+}
+
+.clip-path-right {
+  clip-path: polygon(75% 0, 103% 0, 103% 103%, 65% 103%);
+}
