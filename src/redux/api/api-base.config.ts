@@ -5,7 +5,7 @@ import { fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { RootState } from "../store";
 
 export const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/";
+  import.meta.env.VITE_API_URL || "http://localhost:3000/";
 
 // Базовый запрос с поддержкой авторизации
 export const baseQuery = fetchBaseQuery({
