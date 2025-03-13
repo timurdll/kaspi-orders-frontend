@@ -123,6 +123,10 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     setShowCommentModal(false);
   };
 
+  const showInvoiceButton =
+    ORDER_STATUSES.indexOf(cardStatus) >=
+    ORDER_STATUSES.indexOf("ON_PACKAGING");
+
   return (
     <div className="mb-6 w-full max-w-md">
       {/* Статус "ползунок" с Framer Motion */}
@@ -179,7 +183,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         />
 
         <div className="mt-4 flex items-center gap-4">
-          {cardStatus === "ON_SHIPMENT" && (
+          {showInvoiceButton && (
             <InvoiceButton
               attributes={attributes}
               invoiceLink={invoiceLink}
