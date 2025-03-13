@@ -42,7 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Бургер-меню (видно на экранах меньше md) */}
-        <div className="flex md:hidden items-center">
+        <div className="flex items-center">
           <BurgerMenuTabs
             activeTab={activeTab}
             onTabChange={onTabChange}
