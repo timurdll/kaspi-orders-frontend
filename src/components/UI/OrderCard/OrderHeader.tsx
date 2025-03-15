@@ -11,11 +11,34 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({ code }) => {
   const showNotification = useCopyNotification();
 
   const handleCopy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      showNotification("Скопировано!");
-    } catch (err) {
-      console.error("Ошибка копирования:", err);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        showNotification("Скопировано!");
+      } catch (err) {
+        console.error("Ошибка копирования через Clipboard API:", err);
+      }
+    } else {
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand("copy");
+        if (successful) {
+          showNotification("Скопировано!");
+        } else {
+          console.error("Fallback копирование не удалось");
+        }
+        document.body.removeChild(textArea);
+      } catch (err) {
+        console.error("Ошибка копирования (fallback):", err);
+      }
     }
   };
 

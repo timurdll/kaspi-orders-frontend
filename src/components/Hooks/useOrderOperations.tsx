@@ -4,8 +4,9 @@ import {
   useCompleteOrderMutation,
   useSendSecurityCodeMutation,
   useUpdateCustomStatusMutation,
-  useLazyGenerateWaybillQuery,
+  useLazyGenerateSelfDeliveryWaybillQuery,
   useUpdateOrderStatusMutation,
+  useUpdateOrderStatusWithWaybillMutation,
 } from "../../redux/api/api"; // Импорт из нового централизованного файла экспорта
 
 const getInitialStatus = (order: KaspiOrder): OrderCustomStatus => {
@@ -18,6 +19,11 @@ export const useOrderOperations = (order: KaspiOrder, storeName: string) => {
   const [cardStatus, setCardStatus] = useState<OrderCustomStatus>(
     getInitialStatus(order)
   );
+
+  const [isFetchingWaybill, setIsFetchingWaybill] = useState<boolean>(false);
+  const [updateOrderStatusWithWaybill] =
+    useUpdateOrderStatusWithWaybillMutation(); // Новый хук
+
   const [invoiceLink, setInvoiceLink] = useState<string | null>(
     attributes.kaspiDelivery?.waybill || null
   );
@@ -32,8 +38,8 @@ export const useOrderOperations = (order: KaspiOrder, storeName: string) => {
     useUpdateCustomStatusMutation();
   const [sendSecurityCode] = useSendSecurityCodeMutation();
   const [completeOrder] = useCompleteOrderMutation();
-  const [triggerGenerateWaybill, { isFetching: isGenerating }] =
-    useLazyGenerateWaybillQuery();
+  const [triggerGenerateSelfDeliveryWaybill, { isFetching: isGenerating }] =
+    useLazyGenerateSelfDeliveryWaybillQuery();
 
   useEffect(() => {
     setInvoiceLink(attributes.kaspiDelivery?.waybill || null);
@@ -124,11 +130,12 @@ export const useOrderOperations = (order: KaspiOrder, storeName: string) => {
     }
   };
 
-  const handleGenerateWaybill = async (e: React.MouseEvent) => {
+  const handleGenerateSelfDeliveryWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setError(null);
     try {
-      const blob = await triggerGenerateWaybill(kaspiOrderId).unwrap();
+      const blob =
+        await triggerGenerateSelfDeliveryWaybill(kaspiOrderId).unwrap();
       if (!blob) throw new Error("Не удалось получить накладную");
       const blobUrl = window.URL.createObjectURL(blob);
       setInvoiceLink(blobUrl);
@@ -139,23 +146,118 @@ export const useOrderOperations = (order: KaspiOrder, storeName: string) => {
     }
   };
 
-  const handleGetWaybill = async (e: React.MouseEvent) => {
+  // const handleTransitionToOnPackaging = async (e: React.MouseEvent) => {
+  //   e.stopPropagation();
+  //   setError(null);
+  //   setIsFetchingWaybill(true);
+  //   try {
+  //     const maxAttempts = 10;
+  //     let attempts = 0;
+  //     let response;
+
+  //     // Пытаемся получить накладную
+  //     while (attempts < maxAttempts) {
+  //       response = await updateOrderStatus({
+  //         orderId: kaspiOrderId,
+  //         storeName,
+  //       }).unwrap();
+
+  //       if (response?.waybill) {
+  //         setInvoiceLink(response.waybill);
+  //         window.open(response.waybill, "_blank");
+  //         break;
+  //       }
+
+  //       attempts++;
+  //       // Ждем 3 секунды перед следующим запросом
+  //       await new Promise((resolve) => setTimeout(resolve, 3000));
+  //     }
+
+  //     // Проверяем, получили ли мы накладную после всех попыток
+  //     if (!response?.waybill) {
+  //       throw new Error(
+  //         "Не удалось получить накладную после нескольких попыток"
+  //       );
+  //     }
+
+  //     // После успешной генерации накладной обновляем статус на сервере
+  //     const statusResponse = await updateCustomStatus({
+  //       orderId: kaspiOrderId,
+  //       status: "ON_PACKAGING",
+  //     }).unwrap();
+
+  //     // Проверяем ответ на успешность обновления статуса
+  //     if (statusResponse && statusResponse.success) {
+  //       // Только после успешного обновления на сервере меняем локальный статус
+  //       setCardStatus("ON_PACKAGING");
+  //     } else {
+  //       throw new Error("Не удалось обновить статус заказа на ON_PACKAGING");
+  //     }
+  //   } catch (error) {
+  //     console.error("Ошибка при переходе на ON_PACKAGING:", error);
+  //     // Теперь показываем ошибку пользователю
+  //     setError(
+  //       "Не удалось изменить статус заказа. Пожалуйста, попробуйте еще раз."
+  //     );
+  //   } finally {
+  //     setIsFetchingWaybill(false);
+  //   }
+  // };
+
+  const handleGetKaspiWaybill = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setError(null);
+    setIsFetchingWaybill(true);
     try {
-      const response = await updateOrderStatus({
-        orderId: kaspiOrderId,
-        storeName,
-      }).unwrap();
-      if (response?.waybill) {
-        setInvoiceLink(response.waybill);
-        window.open(response.waybill, "_blank");
-      } else {
-        setError("Накладная еще не сформирована, повторите запрос позже");
+      const maxAttempts = 10;
+      let attempts = 0;
+      let response;
+
+      // Пытаемся получить накладную
+      while (attempts < maxAttempts) {
+        response = await updateOrderStatusWithWaybill({
+          orderId: kaspiOrderId,
+          storeName,
+          orderCode: attributes.code,
+        }).unwrap();
+
+        if (response?.waybill) {
+          setInvoiceLink(response.waybill);
+          // window.open(response.waybill, "_blank");
+          break;
+        }
+
+        attempts++;
+        // Ждем 3 секунды перед следующим запросом
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       }
-    } catch (error: any) {
-      console.error("Error getting waybill:", error);
+
+      // const response = await updateOrderStatusWithWaybill({
+      //   orderId: kaspiOrderId,
+      //   storeName,
+      //   orderCode: attributes.code,
+      // }).unwrap();
+      // if (response?.waybill) {
+      // setInvoiceLink(response.waybill);
+      // window.open(response.waybill, "_blank");
+      // } else {
+      //   setError("Накладная еще не сформирована, попробуйте позже.");
+      // }
+      const statusResponse = await updateCustomStatus({
+        orderId: kaspiOrderId,
+        status: "ON_PACKAGING",
+      }).unwrap();
+      if (statusResponse && statusResponse.customStatus === "ON_PACKAGING") {
+        // Только после успешного обновления на сервере меняем локальный статус
+        setCardStatus("ON_PACKAGING");
+      } else {
+        throw new Error("Не удалось обновить статус заказа на ON_PACKAGING");
+      }
+    } catch (error) {
+      console.error("Ошибка при получении накладной:", error);
       setError("Ошибка при получении накладной");
+    } finally {
+      setIsFetchingWaybill(false);
     }
   };
 
@@ -167,13 +269,14 @@ export const useOrderOperations = (order: KaspiOrder, storeName: string) => {
     error,
     isUpdating,
     isGenerating,
+    isFetchingWaybill,
     setSecurityCode,
     handleMarkAssembled,
     handleUpdateStatus,
     handleSendCode,
     handleCompleteOrder,
     handleSendForTransfer,
-    handleGenerateWaybill,
-    handleGetWaybill,
+    handleGenerateSelfDeliveryWaybill,
+    handleGetKaspiWaybill,
   };
 };

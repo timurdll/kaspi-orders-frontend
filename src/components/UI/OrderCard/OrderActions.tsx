@@ -7,12 +7,14 @@ interface OrderActionsProps {
   cardStatus: OrderCustomStatus;
   showCodeInput: boolean;
   securityCode: string;
+  isWaybillFetching: boolean;
   onUpdateStatus: (newStatus: OrderCustomStatus) => void;
   onSendCode: (e: React.MouseEvent) => void;
   onCompleteOrder: (e: React.FormEvent) => void;
   onMarkAssembled: (e: React.MouseEvent) => void;
   onSendForTransfer: (e: React.MouseEvent) => Promise<void>;
   onSecurityCodeChange: (value: string) => void;
+  onGetKaspiWaybill: (e: React.MouseEvent) => void;
 }
 
 export const OrderActions: React.FC<OrderActionsProps> = ({
@@ -20,12 +22,14 @@ export const OrderActions: React.FC<OrderActionsProps> = ({
   cardStatus,
   showCodeInput,
   securityCode,
+  isWaybillFetching,
   onMarkAssembled,
   onUpdateStatus,
   onSendCode,
   onCompleteOrder,
   onSendForTransfer,
   onSecurityCodeChange,
+  onGetKaspiWaybill,
 }) => {
   const [transferSent, setTransferSent] = useState(false);
 
@@ -41,9 +45,15 @@ export const OrderActions: React.FC<OrderActionsProps> = ({
     return (
       <StatusButton
         requiredStatus="ON_PACKAGING"
-        onClick={() => onUpdateStatus("ON_PACKAGING")}
+        onClick={(e) => {
+          if (attributes.isKaspiDelivery) {
+            onGetKaspiWaybill(e);
+          } else {
+            onUpdateStatus("ON_PACKAGING");
+          }
+        }}
       >
-        Отгрузил
+        {isWaybillFetching ? "Переводится на упаковку..." : "Упаковал"}
       </StatusButton>
     );
   }

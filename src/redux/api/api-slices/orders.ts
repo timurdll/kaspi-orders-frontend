@@ -68,6 +68,28 @@ export const ordersEndpoints = (
     },
   }),
 
+  // Новый эндпоинт для обновления статуса и получения waybill
+  updateOrderStatusWithWaybill: builder.mutation<
+    UpdateOrderStatusResponse,
+    UpdateOrderStatusDto & { orderCode: string }
+  >({
+    query: (payload) => ({
+      url: "orders/status-with-waybill",
+      method: "POST",
+      body: payload,
+    }),
+    invalidatesTags: ["Orders"],
+    async onQueryStarted(arg, { queryFulfilled }) {
+      try {
+        console.log(arg);
+        const { data } = await queryFulfilled;
+        console.log("Order update with waybill response:", data);
+      } catch (error) {
+        console.error("Error updating order status with waybill:", error);
+      }
+    },
+  }),
+
   sendSecurityCode: builder.mutation<void, SendSecurityCodeDto>({
     query: (payload) => ({
       url: "orders/send-code",
@@ -102,7 +124,7 @@ export const ordersEndpoints = (
     },
   }),
 
-  generateWaybill: builder.query<Blob, string>({
+  generateSelfDeliveryWaybill: builder.query<Blob, string>({
     query: (orderId: string) => ({
       url: `orders/waybill/${orderId}`,
       method: "GET",

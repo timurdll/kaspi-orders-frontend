@@ -36,7 +36,8 @@ export const {
   useUpdateOrderStatusMutation,
   useSendSecurityCodeMutation,
   useCompleteOrderMutation,
-  useLazyGenerateWaybillQuery,
+  useLazyGenerateSelfDeliveryWaybillQuery,
+  useUpdateOrderStatusWithWaybillMutation, // Новый хук
 
   // Comments
   useAddCommentMutation,

@@ -82,14 +82,15 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     error,
     isUpdating,
     isGenerating,
+    isFetchingWaybill,
     setSecurityCode,
     handleMarkAssembled,
     handleUpdateStatus,
     handleSendCode,
     handleCompleteOrder,
     handleSendForTransfer,
-    handleGenerateWaybill,
-    handleGetWaybill,
+    handleGenerateSelfDeliveryWaybill,
+    handleGetKaspiWaybill,
   } = useOrderOperations(order, storeName);
 
   // Итоговый статус
@@ -150,8 +151,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             duration: 0.5,
           }}
         >
-          {STATUS_LABELS[cardStatus as keyof typeof STATUS_LABELS] ??
-            "Неизвестен"}
+          {STATUS_LABELS[cardStatus] ?? "Неизвестен"}
         </motion.div>
       </div>
 
@@ -187,10 +187,11 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             <InvoiceButton
               attributes={attributes}
               invoiceLink={invoiceLink}
+              isWaybillFetching={isFetchingWaybill}
               isGenerating={isGenerating}
               isUpdating={isUpdating}
-              onGenerateWaybill={handleGenerateWaybill}
-              onGetWaybill={handleGetWaybill}
+              onGenerateSelfDeliveryWaybill={handleGenerateSelfDeliveryWaybill}
+              // onGetKaspiWaybill={handleGetKaspiWaybill}
             />
           )}
 
@@ -204,7 +205,10 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             onMarkAssembled={handleMarkAssembled}
             onSendForTransfer={handleSendForTransfer}
             onSecurityCodeChange={setSecurityCode}
-            onUpdateStatus={handleUpdateStatus} // теперь принимает OrderCustomStatus
+            // Передаем оба метода: для обновления статуса и для генерации накладной
+            onUpdateStatus={handleUpdateStatus}
+            onGetKaspiWaybill={handleGetKaspiWaybill}
+            isWaybillFetching={isFetchingWaybill}
           />
 
           {/* Кнопка комментариев с бейджем непрочитанных */}

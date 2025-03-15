@@ -13,17 +13,18 @@ interface InvoiceButtonProps {
   invoiceLink: string | null;
   isGenerating: boolean;
   isUpdating: boolean;
-  onGenerateWaybill: (e: React.MouseEvent) => void;
-  onGetWaybill: (e: React.MouseEvent) => void;
+  isWaybillFetching: boolean;
+  onGenerateSelfDeliveryWaybill: (e: React.MouseEvent) => void;
+  // onGetKaspiWaybill: (e: React.MouseEvent) => void;
 }
 
 export const InvoiceButton: React.FC<InvoiceButtonProps> = ({
   attributes,
   invoiceLink,
   isGenerating,
-  isUpdating,
-  onGenerateWaybill,
-  onGetWaybill,
+  isWaybillFetching,
+  onGenerateSelfDeliveryWaybill,
+  // onGetKaspiWaybill,
 }) => {
   if (attributes.state === "SIGN_REQUIRED") return null;
   if (
@@ -45,7 +46,7 @@ export const InvoiceButton: React.FC<InvoiceButtonProps> = ({
       </a>
     ) : (
       <button
-        onClick={onGenerateWaybill}
+        onClick={onGenerateSelfDeliveryWaybill}
         disabled={isGenerating}
         className="flex items-center justify-center min-w-10 h-10 bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
       >
@@ -71,11 +72,11 @@ export const InvoiceButton: React.FC<InvoiceButtonProps> = ({
         </a>
       ) : (
         <button
-          onClick={onGetWaybill}
-          disabled={isUpdating}
+          // onClick={onGetKaspiWaybill}
+          // disabled={isUpdating}
           className="flex items-center justify-center min-w-10 h-10 bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
         >
-          {isUpdating ? (
+          {isWaybillFetching ? (
             <span className="loader w-6 h-6 border-2 border-t-transparent" />
           ) : (
             <FileText size={16} className="text-white" />
@@ -95,12 +96,17 @@ export const InvoiceButton: React.FC<InvoiceButtonProps> = ({
         </a>
       ) : (
         <button
-          onClick={onGetWaybill}
-          disabled={isUpdating}
+          // onClick={onGetKaspiWaybill}
+          // disabled={isWaybillFetching}
           className="flex items-center justify-center min-w-10 h-10 bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
         >
-          {isUpdating ? (
-            <span className="loader w-4 h-4 border-2 border-t-transparent" />
+          {isWaybillFetching ? (
+            <button
+              disabled
+              className="flex items-center justify-center min-w-10 h-10 bg-indigo-600 transition-colors duration-200 disabled:opacity-50"
+            >
+              <span className="loader w-4 h-4 border-2 border-t-transparent" />
+            </button>
           ) : (
             <FileText size={16} className="text-white" />
           )}
