@@ -53,7 +53,7 @@ export const OrderActions: React.FC<OrderActionsProps> = ({
           }
         }}
       >
-        {isWaybillFetching ? "Переводится на упаковку..." : "Упаковал"}
+        {isWaybillFetching ? "Переводится на упаковку..." : "Отгрузил"}
       </StatusButton>
     );
   }
