@@ -151,7 +151,8 @@ export const Dashboard: React.FC = () => {
   //   };
   // }, []);
 
-  console.log(currentOrders);
+  // console.log(currentOrders);
+  // console.log(preOrders);
 
   return (
     <ErrorBoundary>

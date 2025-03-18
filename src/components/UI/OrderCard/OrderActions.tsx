@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+// import React, { useState } from "react";
 import { KaspiOrderAttributes, OrderCustomStatus } from "../../../types/orders";
 import { StatusButton } from "./StatusButton";
 
@@ -31,7 +31,7 @@ export const OrderActions: React.FC<OrderActionsProps> = ({
   onSecurityCodeChange,
   onGetKaspiWaybill,
 }) => {
-  const [transferSent, setTransferSent] = useState(false);
+  // const [transferSent, setTransferSent] = useState(false);
 
   if (cardStatus === "NEW") {
     return (
@@ -71,22 +71,22 @@ export const OrderActions: React.FC<OrderActionsProps> = ({
 
   if (cardStatus === "PACKAGED") {
     if (attributes.isKaspiDelivery && attributes.kaspiDelivery?.express) {
-      if (!transferSent) {
+      if (!attributes.assembled) {
         return (
           <StatusButton
             requiredStatus="ON_DELIVERY"
             onClick={async (e) => {
               await onSendForTransfer(e);
-              setTransferSent(true);
+              // setTransferSent(true);
             }}
           >
-            Отправить на передачу
+            На передачу
           </StatusButton>
         );
       } else {
         return (
-          <div className="w-full flex items-center justify-center px-4 py-2 bg-gray-300 text-gray-800">
-            Отправлено на передачу
+          <div className="w-full flex items-center justify-center px-4 py-2 bg-green-400 text-white">
+            На передаче
           </div>
         );
       }
