@@ -19,7 +19,7 @@ export const commentsEndpoints = (
     query: (orderId) => `orders/${orderId}/comments`,
     providesTags: ["Comments"],
   }),
-  getUnreadCommentsCount: builder.query<number, string>({
+  getUnreadCommentsCount: builder.query<any, string>({
     query: (orderId) => `orders/${orderId}/comments/unread-count`, // Создай соответствующий эндпоинт на бэкенде, либо можно использовать GET /comments и вычислять count
     providesTags: ["Comments"],
   }),

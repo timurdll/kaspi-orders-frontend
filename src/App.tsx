@@ -1,3 +1,4 @@
+// src/App.tsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Dashboard } from "./components/Dashboard";
 import { OrderKaspiDeliveryPage } from "./components/OrderKaspiDeliveryPage";
@@ -6,6 +7,7 @@ import { useEffect } from "react";
 import socket from "./socket";
 import { useDispatch } from "react-redux";
 import { updateOrderStatus } from "./redux/orderSlice";
+import { addComment } from "./redux/commentSlice";
 
 function App() {
   const dispatch = useDispatch();
@@ -13,23 +15,23 @@ function App() {
   useEffect(() => {
     socket.connect();
 
-    // Registración del usuario
+    // Регистрация пользователя
     socket.emit("register");
 
-    // Escuchar notificaciones
+    // Слушаем уведомления
     socket.on("notification", (message: string) => {
-      console.log("Notificación recibida:", message);
+      console.log("Уведомление получено:", message);
     });
 
-    // Escuchar actualizaciones de estado de órdenes
+    // Слушаем обновления статуса заказов
     socket.on(
       "orderStatusUpdate",
       (data: { orderId: string; newStatus: string; timestamp: string }) => {
         console.log(
-          `Estado de orden actualizado: Orden ${data.orderId} -> ${data.newStatus}`
+          `Статус заказа обновлен: Заказ ${data.orderId} -> ${data.newStatus}`
         );
 
-        // Despachar acción para actualizar Redux
+        // Отправляем действие для обновления Redux
         dispatch(
           updateOrderStatus({
             orderId: data.orderId,
@@ -40,10 +42,26 @@ function App() {
       }
     );
 
-    // Limpiar conexión al desmontar componente
+    // Слушаем новые комментарии
+    socket.on("newComment", (data: { orderKaspiId: string; comment: any }) => {
+      console.log(
+        `Новый комментарий для заказа ${data.orderKaspiId}:`,
+        data.comment
+      );
+
+      // Отправляем действие для добавления комментария в Redux
+      dispatch(
+        addComment({
+          orderKaspiId: data.orderKaspiId,
+          comment: data.comment,
+        })
+      );
+    });
+
+    // Очистка подключения при размонтировании компонента
     return () => {
       socket.disconnect();
-      console.log("WebSocket desconectado.");
+      console.log("WebSocket отключен.");
     };
   }, [dispatch]);
 

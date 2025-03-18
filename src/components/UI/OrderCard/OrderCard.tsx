@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { motion } from "framer-motion";
 import { RootState } from "../../../redux/store";
@@ -12,7 +12,9 @@ import { CommentModal } from "./CommentModal";
 import { useOrderOperations } from "../../Hooks/useOrderOperations";
 import { InvoiceButton } from "./InvoiceButton";
 import { formatDate } from "../../../utils/format";
+import socket from "../../../socket";
 import {
+  useGetCommentsQuery,
   useGetUnreadCommentsCountQuery,
   useMarkCommentsAsReadMutation,
 } from "../../../redux/api/api";
@@ -104,12 +106,36 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const offsetX = currentIndex >= 0 ? stepSize * currentIndex : 0;
   const backgroundColor = STATUS_COLORS[cardStatus] ?? "#999";
 
-  // Получаем количество непрочитанных комментариев (число)
-  const { data: unreadCount } = useGetUnreadCommentsCountQuery(kaspiOrderId);
+  // Queries для комментариев с использованием RTK Query
+  const { data: unreadCount, refetch: refetchUnreaded } =
+    useGetUnreadCommentsCountQuery(kaspiOrderId);
+
+  const { data: commentsData, refetch: refetchComments } =
+    useGetCommentsQuery(kaspiOrderId);
+
   const [markCommentsAsRead] = useMarkCommentsAsReadMutation();
-  console.log("unreadCount:", unreadCount);
+  const comments = commentsData?.comments || [];
 
   const [showCommentModal, setShowCommentModal] = useState<boolean>(false);
+
+  // Эффект для подписки на сокет события для комментариев
+  useEffect(() => {
+    // Обработчик для нового комментария
+    const handleNewComment = (data: { orderKaspiId: string }) => {
+      if (data.orderKaspiId === kaspiOrderId) {
+        refetchUnreaded();
+        refetchComments();
+      }
+    };
+
+    // Подписываемся на событие нового комментария
+    socket.on("newComment", handleNewComment);
+
+    // Отписываемся при размонтировании компонента
+    return () => {
+      socket.off("newComment", handleNewComment);
+    };
+  }, [kaspiOrderId, refetchUnreaded, refetchComments]);
 
   const handleOpenComments = () => {
     setShowCommentModal(true);
@@ -118,6 +144,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const handleCloseComments = async () => {
     try {
       await markCommentsAsRead(kaspiOrderId).unwrap();
+      refetchUnreaded(); // Обновляем счетчик непрочитанных после закрытия
     } catch (error) {
       console.error("Ошибка при отметке комментариев как прочитанных:", error);
     }
@@ -191,7 +218,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
               isGenerating={isGenerating}
               isUpdating={isUpdating}
               onGenerateSelfDeliveryWaybill={handleGenerateSelfDeliveryWaybill}
-              // onGetKaspiWaybill={handleGetKaspiWaybill}
             />
           )}
 
@@ -205,7 +231,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             onMarkAssembled={handleMarkAssembled}
             onSendForTransfer={handleSendForTransfer}
             onSecurityCodeChange={setSecurityCode}
-            // Передаем оба метода: для обновления статуса и для генерации накладной
             onUpdateStatus={handleUpdateStatus}
             onGetKaspiWaybill={handleGetKaspiWaybill}
             isWaybillFetching={isFetchingWaybill}
@@ -214,13 +239,17 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           {/* Кнопка комментариев с бейджем непрочитанных */}
           <button
             onClick={handleOpenComments}
-            className="relative flex items-center justify-center min-w-10 h-10 bg-gray-300 hover:bg-gray-400 transition-colors duration-200"
+            className={`relative flex items-center justify-center min-w-10 h-10 ${
+              unreadCount !== undefined && unreadCount.count > 0
+                ? "bg-blue-600"
+                : "bg-gray-300"
+            } hover:bg-gray-400 transition-colors duration-200`}
             title="Комментарии"
           >
             <MessageSquare size={16} className="text-white" />
-            {unreadCount !== undefined && unreadCount > 0 && (
+            {unreadCount !== undefined && unreadCount.count > 0 && (
               <span className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 bg-red-600 text-white text-xs font-bold min-w-[20px] min-h-[20px] flex items-center justify-center rounded-full">
-                {unreadCount}
+                {unreadCount.count}
               </span>
             )}
           </button>
@@ -231,7 +260,15 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         </p>
 
         {showCommentModal && (
-          <CommentModal orderId={kaspiOrderId} onClose={handleCloseComments} />
+          <CommentModal
+            orderId={kaspiOrderId}
+            comments={comments}
+            onClose={handleCloseComments}
+            onCommentsUpdated={() => {
+              refetchComments();
+              refetchUnreaded();
+            }}
+          />
         )}
       </div>
     </div>

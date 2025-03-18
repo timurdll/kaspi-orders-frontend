@@ -1,28 +1,56 @@
-import React, { useState } from "react";
-import {
-  useAddCommentMutation,
-  useGetCommentsQuery,
-} from "../../../redux/api/api";
+import React, { useState, useEffect } from "react";
+import { useAddCommentMutation } from "../../../redux/api/api";
+import socket from "../../../socket";
+
+interface Comment {
+  id: string;
+  text: string;
+  userName: string;
+  createdAt: string;
+}
 
 interface CommentModalProps {
   orderId: string;
+  comments: Comment[];
   onClose: () => void;
+  onCommentsUpdated: () => void;
 }
 
 export const CommentModal: React.FC<CommentModalProps> = ({
   orderId,
+  comments,
   onClose,
+  onCommentsUpdated,
 }) => {
-  const { data: commentsData, isLoading } = useGetCommentsQuery(orderId);
   const [addComment] = useAddCommentMutation();
   const [newComment, setNewComment] = useState("");
+
+  // Обработчик для новых комментариев через сокет
+  useEffect(() => {
+    const handleNewComment = (data: { orderKaspiId: string }) => {
+      // Если комментарий относится к текущему заказу
+      if (data.orderKaspiId === orderId) {
+        onCommentsUpdated();
+      }
+    };
+
+    // Подписываемся на событие нового комментария
+    socket.on("newComment", handleNewComment);
+
+    // Отписываемся при размонтировании компонента
+    return () => {
+      socket.off("newComment", handleNewComment);
+    };
+  }, [orderId, onCommentsUpdated]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
+
     try {
       await addComment({ orderId, text: newComment }).unwrap();
       setNewComment("");
+      onCommentsUpdated(); // Обновляем комментарии после успешного добавления
     } catch (error) {
       console.error("Ошибка при добавлении комментария:", error);
     }
@@ -36,12 +64,9 @@ export const CommentModal: React.FC<CommentModalProps> = ({
         </h2>
 
         <div className="max-h-64 overflow-y-auto mb-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300">
-          {isLoading ? (
-            <p className="text-gray-500 text-sm">Загрузка...</p>
-          ) : commentsData?.comments && commentsData.comments.length > 0 ? (
-            commentsData.comments.map((comment: any) => (
+          {comments.length > 0 ? (
+            comments.map((comment) => (
               <div key={comment.id} className="bg-gray-100 p-3 rounded-md">
-                {/* Отображаем имя пользователя */}
                 <p className="text-sm font-medium text-gray-800">
                   {comment.userName}
                 </p>
