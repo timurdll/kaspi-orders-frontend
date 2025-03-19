@@ -87,6 +87,8 @@ export const Dashboard: React.FC = () => {
       refetchOnReconnect: true,
     }
   );
+  console.log(currentOrders);
+
   const { data: archiveOrders, isLoading: archiveLoading } =
     useGetArchiveOrdersQuery(undefined, {
       pollingInterval: 30000,

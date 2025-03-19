@@ -208,6 +208,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           deliveryAddress={attributes.deliveryAddress}
           products={products || []}
         />
+        <p className="text-lg font-semibold mt-2">{attributes.totalPrice} ₸</p>
 
         <div className="mt-4 flex items-center gap-4">
           {showInvoiceButton && (
