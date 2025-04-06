@@ -90,6 +90,24 @@ export const BurgerMenuTabs: React.FC<BurgerMenuTabsProps> = ({
               role="menu"
               aria-orientation="vertical"
             >
+              <button
+                className={`w-full text-left px-4 py-2 text-sm ${
+                  activeTab === "archive"
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-700"
+                }`}
+                onClick={() => {
+                  onTabChange("archive");
+                  setIsOpen(false);
+                }}
+              >
+                Архивные заказы
+                {counts.archive && (
+                  <span className="ml-2 inline-block bg-gray-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    {counts.archive.totalCount}
+                  </span>
+                )}
+              </button>
               {/* Отображаем вкладки заказов только если экран маленький */}
               {isSmallScreen && (
                 <>

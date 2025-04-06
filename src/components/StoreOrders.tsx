@@ -1,5 +1,5 @@
 // src/components/StoreOrders.tsx
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Store } from "../types/orders";
 import { DeleteConfirmationModal } from "./UI/Modals/DeleteConfirmationModal";
 import { OrdersList } from "./OrdersList";
@@ -16,6 +16,7 @@ export const StoreOrders: React.FC<StoreOrdersProps> = ({
   type = "current",
 }) => {
   const [activeTab, setActiveTab] = useState<"today" | "tomorrow">("today");
+  const [selectedCity, setSelectedCity] = useState<string>("All");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteStore, { isLoading: isDeleting }] = useDeleteStoreMutation();
 
@@ -43,7 +44,26 @@ export const StoreOrders: React.FC<StoreOrdersProps> = ({
 
   let ordersToDisplay = store.orders || [];
 
-  // Если отображаются "текущие" заказы, применяем фильтрацию
+  // Получаем список уникальных значений из нового поля warehouseAddress
+  const cityOptions = useMemo(() => {
+    const cities = new Set<string>();
+    ordersToDisplay.forEach((order) => {
+      const cityName = order.attributes.warehouseAddress;
+      if (cityName) {
+        cities.add(cityName);
+      }
+    });
+    return Array.from(cities);
+  }, [ordersToDisplay]);
+
+  // Фильтрация заказов по выбранному значению warehouseAddress (если выбрано не "All")
+  if (selectedCity !== "All") {
+    ordersToDisplay = ordersToDisplay.filter(
+      (order) => order.attributes.warehouseAddress === selectedCity
+    );
+  }
+
+  // Если отображаются "текущие" заказы, применяем дополнительную фильтрацию по времени
   if (type === "current") {
     const now = new Date();
     const todayCutoff = new Date(
@@ -59,7 +79,7 @@ export const StoreOrders: React.FC<StoreOrdersProps> = ({
     const todayOrders = ordersToDisplay.filter((order) => {
       const { isKaspiDelivery, kaspiDelivery, creationDate } = order.attributes;
       if (!isKaspiDelivery) return true;
-      if (kaspiDelivery?.express) return true; // Теперь express заказы всегда идут в today
+      if (kaspiDelivery?.express) return true; // Express-заказы всегда попадают в today
       return creationDate < todayCutoff;
     });
 
@@ -67,7 +87,7 @@ export const StoreOrders: React.FC<StoreOrdersProps> = ({
       const { isKaspiDelivery, kaspiDelivery, creationDate } = order.attributes;
       return (
         isKaspiDelivery &&
-        !kaspiDelivery?.express && // Express-заказы исключаем из tomorrow
+        !kaspiDelivery?.express && // Express-заказы исключаются из tomorrow
         creationDate >= todayCutoff
       );
     });
@@ -77,6 +97,26 @@ export const StoreOrders: React.FC<StoreOrdersProps> = ({
 
   return (
     <div className="mb-6 border-2 border-blue-500 flex flex-col gap-4 p-4">
+      {/* Фильтр по городу (warehouseAddress) */}
+      <div className="mb-4">
+        <label htmlFor="city-filter" className="mr-2 font-medium">
+          Фильтр по городу:
+        </label>
+        <select
+          id="city-filter"
+          value={selectedCity}
+          onChange={(e) => setSelectedCity(e.target.value)}
+          className="border rounded p-1"
+        >
+          <option value="All">Все города</option>
+          {cityOptions.map((city) => (
+            <option key={city} value={city}>
+              {city}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {type === "current" && (
         <OrdersDeliveryDayTabs
           activeTab={activeTab}

@@ -1,8 +1,11 @@
 // api-slices/admin.ts
-// Slice для административных функций
-
 import { BaseQueryFn, EndpointBuilder } from "@reduxjs/toolkit/query";
-import { AdminCreateUserDto, AdminUpdateStatusesDto, User } from "../api-types";
+import {
+  AdminCreateUserDto,
+  AdminUpdateStatusesDto,
+  AdminUpdateCitiesDto,
+  User,
+} from "../api-types";
 
 export const adminEndpoints = (
   builder: EndpointBuilder<BaseQueryFn, string, string>
@@ -24,6 +27,15 @@ export const adminEndpoints = (
   adminUpdateAllowedStatuses: builder.mutation<User, AdminUpdateStatusesDto>({
     query: (dto) => ({
       url: "admin/update-allowed-statuses",
+      method: "PATCH",
+      body: dto,
+    }),
+    invalidatesTags: ["User"],
+  }),
+
+  adminUpdateAllowedCities: builder.mutation<User, AdminUpdateCitiesDto>({
+    query: (dto) => ({
+      url: "admin/update-allowed-cities",
       method: "PATCH",
       body: dto,
     }),

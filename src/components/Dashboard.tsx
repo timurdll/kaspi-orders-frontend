@@ -77,11 +77,13 @@ export const Dashboard: React.FC = () => {
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated
   );
+  const user = useSelector((state: RootState) => state.auth.user);
+  console.log(user);
 
   const { data: currentOrders, isLoading: currentLoading } = useGetOrdersQuery(
     undefined,
     {
-      pollingInterval: 30000,
+      pollingInterval: 300000,
       skip: !isAuthenticated,
       refetchOnMountOrArgChange: true,
       refetchOnReconnect: true,
@@ -91,7 +93,7 @@ export const Dashboard: React.FC = () => {
 
   const { data: archiveOrders, isLoading: archiveLoading } =
     useGetArchiveOrdersQuery(undefined, {
-      pollingInterval: 30000,
+      pollingInterval: 300000,
       skip: !isAuthenticated,
       refetchOnMountOrArgChange: true,
       refetchOnReconnect: true,
@@ -99,7 +101,7 @@ export const Dashboard: React.FC = () => {
   const { data: preOrders, isLoading: preOrdersLoading } = useGetPreOrdersQuery(
     undefined,
     {
-      pollingInterval: 30000,
+      pollingInterval: 300000,
       skip: !isAuthenticated,
       refetchOnMountOrArgChange: true,
       refetchOnReconnect: true,
@@ -112,6 +114,8 @@ export const Dashboard: React.FC = () => {
       refetchOnMountOrArgChange: true,
       refetchOnReconnect: true,
     });
+
+  // console.log(archiveOrders);
 
   // Используем кастомный хук для каждого типа заказов отдельно
   const cachedCurrentOrders = useCachedData(currentOrders);

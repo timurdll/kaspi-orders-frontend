@@ -91,6 +91,12 @@ export interface AdminCreateUserDto {
   name: string;
   password: string;
   allowedStatuses: string[];
+  allowedCities: string[];
+}
+
+export interface AdminUpdateCitiesDto {
+  userId: string;
+  allowedCities: string[];
 }
 
 export interface AdminUpdateStatusesDto {

@@ -65,6 +65,7 @@ export interface KaspiOrderAttributes {
   customStatus: string;
   customer: KaspiCustomer;
   deliveryCost: number;
+  warehouseAddress: string;
 }
 
 export interface KaspiOrder {
