@@ -4,7 +4,7 @@ import {
   useAdminCreateUserMutation,
   useAdminGetUsersQuery,
   useAdminUpdateAllowedStatusesMutation,
-  useAdminUpdateAllowedCitiesMutation,
+  // useAdminUpdateAllowedCitiesMutation,
 } from "../../redux/api/api";
 
 // Допустимые статусы с их кодами и переводами
@@ -19,7 +19,7 @@ const PERMITTED_STATUSES = [
 const AVAILABLE_CITIES = [
   { code: "ALA", label: "Алматы" },
   { code: "AST", label: "Астана" },
-  { code: "SHY", label: "Шымкент" },
+  // { code: "SHY", label: "Шымкент" },
 ];
 
 export const AdminDashboard: React.FC = () => {
@@ -29,13 +29,13 @@ export const AdminDashboard: React.FC = () => {
   const [updateStatuses, { isLoading: isUpdatingStatuses }] =
     useAdminUpdateAllowedStatusesMutation();
   // Хук для обновления разрешённых городов
-  const [updateCities, { isLoading: isUpdatingCities }] =
-    useAdminUpdateAllowedCitiesMutation();
+  // const [updateCities, { isLoading: isUpdatingCities }] =
+  //   useAdminUpdateAllowedCitiesMutation();
   // Хук для получения списка пользователей
   const {
     data: usersData,
     isLoading: isLoadingUsers,
-    error: usersError,
+    // error: usersError,
   } = useAdminGetUsersQuery();
 
   // Состояния для формы создания пользователя
@@ -55,9 +55,9 @@ export const AdminDashboard: React.FC = () => {
     useState<string[]>([]);
 
   // Состояния для формы обновления разрешённых городов
-  const [selectedUserAllowedCities, setSelectedUserAllowedCities] = useState<
-    string[]
-  >([]);
+  // const [selectedUserAllowedCities, setSelectedUserAllowedCities] = useState<
+  //   string[]
+  // >([]);
 
   // При выборе пользователя из списка подгружаем его текущие разрешения и города
   useEffect(() => {
@@ -65,7 +65,7 @@ export const AdminDashboard: React.FC = () => {
       const user = usersData.find((u) => u.id === selectedUserId);
       if (user) {
         setSelectedUserAllowedStatuses(user.allowedStatuses);
-        setSelectedUserAllowedCities(user.allowedCities || []);
+        // setSelectedUserAllowedCities(user.allowedCities || []);
       }
     }
   }, [usersData, selectedUserId]);
@@ -104,18 +104,18 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleUpdateCities = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await updateCities({
-        userId: selectedUserId,
-        allowedCities: selectedUserAllowedCities,
-      }).unwrap();
-      alert("Разрешённые города успешно обновлены");
-    } catch (error) {
-      console.error("Ошибка при обновлении городов:", error);
-    }
-  };
+  // const handleUpdateCities = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   try {
+  //     await updateCities({
+  //       userId: selectedUserId,
+  //       allowedCities: selectedUserAllowedCities,
+  //     }).unwrap();
+  //     alert("Разрешённые города успешно обновлены");
+  //   } catch (error) {
+  //     console.error("Ошибка при обновлении городов:", error);
+  //   }
+  // };
 
   // Переключение галочки для статуса при создании пользователя
   const toggleStatusForNewUser = (statusCode: string) => {
@@ -145,13 +145,13 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Переключение галочки для города при обновлении разрешённых городов
-  const toggleCityForUpdate = (cityCode: string) => {
-    setSelectedUserAllowedCities((prev) =>
-      prev.includes(cityCode)
-        ? prev.filter((c) => c !== cityCode)
-        : [...prev, cityCode]
-    );
-  };
+  // const toggleCityForUpdate = (cityCode: string) => {
+  //   setSelectedUserAllowedCities((prev) =>
+  //     prev.includes(cityCode)
+  //       ? prev.filter((c) => c !== cityCode)
+  //       : [...prev, cityCode]
+  //   );
+  // };
 
   return (
     <div className="p-4 max-w-3xl mx-auto">
@@ -304,7 +304,7 @@ export const AdminDashboard: React.FC = () => {
                 </form>
 
                 {/* Форма обновления разрешённых городов */}
-                <form onSubmit={handleUpdateCities} className="space-y-4">
+                {/* <form onSubmit={handleUpdateCities} className="space-y-4">
                   <div>
                     <p className="mb-2 text-sm font-medium">
                       Разрешённые города
@@ -334,7 +334,7 @@ export const AdminDashboard: React.FC = () => {
                   >
                     {isUpdatingCities ? "Обновление..." : "Обновить города"}
                   </button>
-                </form>
+                </form> */}
               </>
             )}
           </>

@@ -7,7 +7,7 @@ export interface UserData {
   username: string;
   role: string;
   allowedStatuses: string[];
-  allowedCities: string[];
+  // allowedCities: string[];
 }
 
 interface AuthState {
