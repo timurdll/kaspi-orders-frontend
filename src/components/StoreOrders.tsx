@@ -100,7 +100,7 @@ export const StoreOrders: React.FC<StoreOrdersProps> = ({
       {/* Фильтр по городу (warehouseAddress) */}
       <div className="mb-4">
         <label htmlFor="city-filter" className="mr-2 font-medium">
-          Фильтр по городу:
+          Фильтр по складу:
         </label>
         <select
           id="city-filter"

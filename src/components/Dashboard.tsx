@@ -89,7 +89,7 @@ export const Dashboard: React.FC = () => {
       refetchOnReconnect: true,
     }
   );
-  console.log(currentOrders);
+  // console.log(currentOrders);
 
   const { data: archiveOrders, isLoading: archiveLoading } =
     useGetArchiveOrdersQuery(undefined, {
@@ -98,6 +98,9 @@ export const Dashboard: React.FC = () => {
       refetchOnMountOrArgChange: true,
       refetchOnReconnect: true,
     });
+
+  console.log(archiveOrders);
+
   const { data: preOrders, isLoading: preOrdersLoading } = useGetPreOrdersQuery(
     undefined,
     {
