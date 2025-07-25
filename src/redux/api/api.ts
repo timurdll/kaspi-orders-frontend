@@ -55,6 +55,8 @@ export const {
   useAdminGetUsersQuery,
   useAdminUpdateAllowedStatusesMutation,
   useAdminUpdateAllowedCitiesMutation,
+  useAdminUpdateAllowedStoresMutation,
+  useAdminGetUserStoresQuery,
 } = api;
 
 // Экспорт для использования в store.ts

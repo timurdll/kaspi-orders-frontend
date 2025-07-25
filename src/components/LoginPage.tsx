@@ -16,6 +16,7 @@ interface JwtPayload {
   sub: string;
   role: string;
   allowedStatuses: string[];
+  allowedStores: { id: string; name: string }[]; // добавьте это!
 }
 
 export const LoginPage = () => {
@@ -39,6 +40,7 @@ export const LoginPage = () => {
             username: decoded.username,
             role: decoded.role,
             allowedStatuses: decoded.allowedStatuses,
+            allowedStores: decoded.allowedStores || [], // обязательно!
           },
         })
       );

@@ -4,8 +4,10 @@ import {
   useAdminCreateUserMutation,
   useAdminGetUsersQuery,
   useAdminUpdateAllowedStatusesMutation,
-  // useAdminUpdateAllowedCitiesMutation,
+  useAdminUpdateAllowedStoresMutation,
+  useAdminGetUserStoresQuery,
 } from "../../redux/api/api";
+import { useGetStoresQuery } from "../../redux/api/api";
 
 // Допустимые статусы с их кодами и переводами
 const PERMITTED_STATUSES = [
@@ -23,20 +25,13 @@ const AVAILABLE_CITIES = [
 ];
 
 export const AdminDashboard: React.FC = () => {
-  // Хуки для создания пользователя
-  const [createUser, { isLoading: isCreating }] = useAdminCreateUserMutation();
-  // Хук для обновления разрешённых статусов
-  const [updateStatuses, { isLoading: isUpdatingStatuses }] =
-    useAdminUpdateAllowedStatusesMutation();
-  // Хук для обновления разрешённых городов
-  // const [updateCities, { isLoading: isUpdatingCities }] =
-  //   useAdminUpdateAllowedCitiesMutation();
-  // Хук для получения списка пользователей
-  const {
-    data: usersData,
-    isLoading: isLoadingUsers,
-    // error: usersError,
-  } = useAdminGetUsersQuery();
+  // Состояния для формы обновления разрешённых статусов
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedUserAllowedStatuses, setSelectedUserAllowedStatuses] =
+    useState<string[]>([]);
+  const [selectedUserAllowedStores, setSelectedUserAllowedStores] = useState<
+    string[]
+  >([]);
 
   // Состояния для формы создания пользователя
   const [username, setUsername] = useState("");
@@ -48,28 +43,46 @@ export const AdminDashboard: React.FC = () => {
   const [selectedCitiesForNewUser, setSelectedCitiesForNewUser] = useState<
     string[]
   >([]);
+  const [selectedStoresForNewUser, setSelectedStoresForNewUser] = useState<
+    string[]
+  >([]);
 
-  // Состояния для формы обновления разрешённых статусов
-  const [selectedUserId, setSelectedUserId] = useState("");
-  const [selectedUserAllowedStatuses, setSelectedUserAllowedStatuses] =
-    useState<string[]>([]);
+  // Хуки для API
+  const [createUser, { isLoading: isCreating }] = useAdminCreateUserMutation();
+  const [updateStatuses, { isLoading: isUpdatingStatuses }] =
+    useAdminUpdateAllowedStatusesMutation();
+  const [updateAllowedStores, { isLoading: isUpdatingStores }] =
+    useAdminUpdateAllowedStoresMutation();
+  const { data: usersData, isLoading: isLoadingUsers } =
+    useAdminGetUsersQuery();
+  const { data: storesData = [], isLoading: isLoadingStores } =
+    useGetStoresQuery();
+  const { data: userStoresData = [] } = useAdminGetUserStoresQuery(
+    selectedUserId,
+    { skip: !selectedUserId }
+  );
 
-  // Состояния для формы обновления разрешённых городов
-  // const [selectedUserAllowedCities, setSelectedUserAllowedCities] = useState<
-  //   string[]
-  // >([]);
-
-  // При выборе пользователя из списка подгружаем его текущие разрешения и города
+  // При выборе пользователя из списка подгружаем его текущие разрешения
   useEffect(() => {
     if (usersData && selectedUserId) {
-      const user = usersData.find((u) => u.id === selectedUserId);
+      const user = usersData.find((u: any) => u.id === selectedUserId);
       if (user) {
-        setSelectedUserAllowedStatuses(user.allowedStatuses);
-        // setSelectedUserAllowedCities(user.allowedCities || []);
+        setSelectedUserAllowedStatuses(user.allowedStatuses || []);
+        // Убираем обращение к allowedStores так как его нет в типе User
+        // setSelectedUserAllowedStores(
+        //   user.allowedStores?.map((s: any) => s.id) || []
+        // );
       }
     }
   }, [usersData, selectedUserId]);
 
+  useEffect(() => {
+    if (userStoresData && selectedUserId) {
+      setSelectedUserAllowedStores(userStoresData.map((s: any) => s.id));
+    }
+  }, [userStoresData, selectedUserId]);
+
+  // Создание пользователя
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -78,13 +91,16 @@ export const AdminDashboard: React.FC = () => {
         name,
         password,
         allowedStatuses: selectedStatusesForNewUser,
-        allowedCities: selectedCitiesForNewUser, // передаём выбранные города
+        allowedCities: selectedCitiesForNewUser,
+        // Убираем allowedStores из создания пользователя, так как его нет в AdminCreateUserDto
+        // allowedStores: selectedStoresForNewUser,
       }).unwrap();
       setUsername("");
       setName("");
       setPassword("");
       setSelectedStatusesForNewUser([]);
       setSelectedCitiesForNewUser([]);
+      setSelectedStoresForNewUser([]);
       alert("Пользователь успешно создан");
     } catch (error) {
       console.error("Ошибка при создании пользователя:", error);
@@ -104,18 +120,18 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // const handleUpdateCities = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   try {
-  //     await updateCities({
-  //       userId: selectedUserId,
-  //       allowedCities: selectedUserAllowedCities,
-  //     }).unwrap();
-  //     alert("Разрешённые города успешно обновлены");
-  //   } catch (error) {
-  //     console.error("Ошибка при обновлении городов:", error);
-  //   }
-  // };
+  const handleUpdateStores = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updateAllowedStores({
+        userId: selectedUserId,
+        storeIds: selectedUserAllowedStores,
+      }).unwrap();
+      alert("Доступные магазины успешно обновлены");
+    } catch (error) {
+      console.error("Ошибка при обновлении магазинов:", error);
+    }
+  };
 
   // Переключение галочки для статуса при создании пользователя
   const toggleStatusForNewUser = (statusCode: string) => {
@@ -135,6 +151,15 @@ export const AdminDashboard: React.FC = () => {
     );
   };
 
+  // Переключение галочки для магазина при создании пользователя
+  const toggleStoreForNewUser = (storeId: string) => {
+    setSelectedStoresForNewUser((prev) =>
+      prev.includes(storeId)
+        ? prev.filter((s) => s !== storeId)
+        : [...prev, storeId]
+    );
+  };
+
   // Переключение галочки для статуса при обновлении разрешений
   const toggleStatusForUpdate = (statusCode: string) => {
     setSelectedUserAllowedStatuses((prev) =>
@@ -143,15 +168,6 @@ export const AdminDashboard: React.FC = () => {
         : [...prev, statusCode]
     );
   };
-
-  // Переключение галочки для города при обновлении разрешённых городов
-  // const toggleCityForUpdate = (cityCode: string) => {
-  //   setSelectedUserAllowedCities((prev) =>
-  //     prev.includes(cityCode)
-  //       ? prev.filter((c) => c !== cityCode)
-  //       : [...prev, cityCode]
-  //   );
-  // };
 
   return (
     <div className="p-4 max-w-3xl mx-auto">
@@ -229,6 +245,24 @@ export const AdminDashboard: React.FC = () => {
               ))}
             </div>
           </div>
+          <div>
+            <p className="block text-sm font-medium mb-1">Магазины</p>
+            <div className="flex flex-wrap gap-4">
+              {storesData?.map((store: any) => (
+                <label
+                  key={store.id}
+                  className="flex items-center space-x-2 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedStoresForNewUser.includes(store.id)}
+                    onChange={() => toggleStoreForNewUser(store.id)}
+                  />
+                  <span className="text-sm">{store.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
           <button
             type="submit"
             className="bg-blue-600 text-white px-4 py-2 rounded"
@@ -258,7 +292,7 @@ export const AdminDashboard: React.FC = () => {
                 className="border p-2 rounded w-full"
               >
                 <option value="">-- Выберите пользователя --</option>
-                {usersData?.map((user) => (
+                {usersData?.map((user: any) => (
                   <option key={user.id} value={user.id}>
                     {user.username} ({user.name})
                   </option>
@@ -303,38 +337,48 @@ export const AdminDashboard: React.FC = () => {
                   </button>
                 </form>
 
-                {/* Форма обновления разрешённых городов */}
-                {/* <form onSubmit={handleUpdateCities} className="space-y-4">
+                {/* Форма обновления разрешённых магазинов */}
+                <form onSubmit={handleUpdateStores} className="space-y-4 mb-6">
                   <div>
                     <p className="mb-2 text-sm font-medium">
-                      Разрешённые города
+                      Доступные магазины
                     </p>
-                    <div className="flex flex-wrap gap-4">
-                      {AVAILABLE_CITIES.map((city) => (
-                        <label
-                          key={city.code}
-                          className="flex items-center space-x-2 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedUserAllowedCities.includes(
-                              city.code
-                            )}
-                            onChange={() => toggleCityForUpdate(city.code)}
-                          />
-                          <span className="text-sm">{city.label}</span>
-                        </label>
-                      ))}
-                    </div>
+                    {isLoadingStores ? (
+                      <p>Загрузка магазинов...</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-4">
+                        {storesData.map((store: any) => (
+                          <label
+                            key={store.id}
+                            className="flex items-center space-x-2 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedUserAllowedStores.includes(
+                                store.id
+                              )}
+                              onChange={() => {
+                                setSelectedUserAllowedStores((prev) =>
+                                  prev.includes(store.id)
+                                    ? prev.filter((id) => id !== store.id)
+                                    : [...prev, store.id]
+                                );
+                              }}
+                            />
+                            <span className="text-sm">{store.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <button
                     type="submit"
-                    className="bg-purple-600 text-white px-4 py-2 rounded"
-                    disabled={isUpdatingCities}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded"
+                    disabled={isUpdatingStores}
                   >
-                    {isUpdatingCities ? "Обновление..." : "Обновить города"}
+                    {isUpdatingStores ? "Обновление..." : "Обновить магазины"}
                   </button>
-                </form> */}
+                </form>
               </>
             )}
           </>

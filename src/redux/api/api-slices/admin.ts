@@ -5,6 +5,8 @@ import {
   AdminUpdateStatusesDto,
   AdminUpdateCitiesDto,
   User,
+  AdminUpdateAllowedStoresDto,
+  Store,
 } from "../api-types";
 
 export const adminEndpoints = (
@@ -40,5 +42,21 @@ export const adminEndpoints = (
       body: dto,
     }),
     invalidatesTags: ["User"],
+  }),
+
+  adminUpdateAllowedStores: builder.mutation<User, AdminUpdateAllowedStoresDto>(
+    {
+      query: (dto) => ({
+        url: "admin/update-allowed-stores",
+        method: "PATCH",
+        body: dto,
+      }),
+      invalidatesTags: ["User"],
+    }
+  ),
+
+  adminGetUserStores: builder.query<Store[], string>({
+    query: (userId) => `admin/stores/${userId}`,
+    providesTags: ["User"],
   }),
 });

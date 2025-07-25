@@ -6,5 +6,6 @@ export const selectUser = (state: RootState) => state.auth.user;
 
 export const selectAllowedStatuses = createSelector(
   selectUser,
-  (user) => user?.allowedStatuses || []
+  (user) => user?.allowedStatuses || [],
+  (user) => user?.allowedStores || []
 );

@@ -61,13 +61,15 @@ const aggregateCounts = (ordersData: any): AggregatedCounts => {
   return { todayCount, tomorrowCount: totalCount - todayCount, totalCount };
 };
 
-const getSafeStores = (data: any) => {
+const getSafeStores = (data: any, allowedStoreNames: string[]) => {
   if (!data?.stores) return [];
-  return data.stores.map((store: any) => ({
-    ...store,
-    orders: store.orders || [],
-    storeName: store.storeName || "Неизвестный магазин",
-  }));
+  return data.stores
+    .filter((store: any) => allowedStoreNames.includes(store.storeName))
+    .map((store: any) => ({
+      ...store,
+      orders: store.orders || [],
+      storeName: store.storeName || "Неизвестный магазин",
+    }));
 };
 
 export const Dashboard: React.FC = () => {
@@ -80,6 +82,8 @@ export const Dashboard: React.FC = () => {
   const user = useSelector((state: RootState) => state.auth.user);
   console.log(user);
 
+  const allowedStoreNames = user?.allowedStores?.map((s: any) => s.name) || [];
+
   const { data: currentOrders, isLoading: currentLoading } = useGetOrdersQuery(
     undefined,
     {
@@ -89,7 +93,7 @@ export const Dashboard: React.FC = () => {
       refetchOnReconnect: true,
     }
   );
-  // console.log(currentOrders);
+  console.log(currentOrders);
 
   const { data: archiveOrders, isLoading: archiveLoading } =
     useGetArchiveOrdersQuery(undefined, {
@@ -190,7 +194,12 @@ export const Dashboard: React.FC = () => {
 
         {/* Основной контент с ограниченной шириной */}
         <div className="max-w-[1440px] mx-auto px-4 py-8">
-          {data && <StoreOrdersList stores={getSafeStores(data)} type={tab} />}
+          {data && (
+            <StoreOrdersList
+              stores={getSafeStores(data, allowedStoreNames)}
+              type={tab}
+            />
+          )}
           <AddStoreModal
             isOpen={isAddStoreModalOpen}
             onClose={() => setIsAddStoreModalOpen(false)}

@@ -104,6 +104,11 @@ export interface AdminUpdateStatusesDto {
   allowedStatuses: string[];
 }
 
+export interface AdminUpdateAllowedStoresDto {
+  userId: string;
+  storeIds: string[];
+}
+
 export interface User {
   id: string;
   username: string;
