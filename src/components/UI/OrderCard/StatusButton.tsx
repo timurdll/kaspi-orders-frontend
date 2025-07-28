@@ -17,6 +17,8 @@ export const StatusButton: React.FC<StatusButtonProps> = ({
   const allowedStatuses = useSelector(selectAllowedStatuses);
   const isDisabled = !allowedStatuses.includes(requiredStatus);
 
+  console.log(allowedStatuses);
+
   return (
     <button
       onClick={isDisabled ? undefined : onClick}

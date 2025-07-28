@@ -7,7 +7,7 @@ export interface UserData {
   username: string;
   role: string;
   allowedStatuses: string[];
-  allowedStores: { id: string; name: string }[]; // исправьте тип!
+  allowedStores: { id: string; name: string }[];
 }
 
 interface AuthState {

@@ -16,7 +16,7 @@ interface JwtPayload {
   sub: string;
   role: string;
   allowedStatuses: string[];
-  allowedStores: { id: string; name: string }[]; // добавьте это!
+  allowedStores: { id: string; name: string }[];
 }
 
 export const LoginPage = () => {
